@@ -21,6 +21,7 @@ import (
 )
 
 type Response interface {
+	Name() string
 	Read(*Stream) error
 }
 
@@ -128,7 +129,21 @@ type ResponseOk struct {
 	Text *ResponseText
 }
 
+func (r *ResponseOk) Name() string { return "OK" }
+
 func (r *ResponseOk) Read(s *Stream) error {
+	r.Text = &ResponseText{}
+	return r.Text.Read(s)
+}
+
+// PREAUTH
+type ResponsePreAuth struct {
+	Text *ResponseText
+}
+
+func (r *ResponsePreAuth) Name() string { return "PREAUTH" }
+
+func (r *ResponsePreAuth) Read(s *Stream) error {
 	r.Text = &ResponseText{}
 	return r.Text.Read(s)
 }
@@ -137,6 +152,8 @@ func (r *ResponseOk) Read(s *Stream) error {
 type ResponseBye struct {
 	Text *ResponseText
 }
+
+func (r *ResponseBye) Name() string { return "BYE" }
 
 func (r *ResponseBye) Read(s *Stream) error {
 	r.Text = &ResponseText{}

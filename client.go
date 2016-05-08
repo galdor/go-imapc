@@ -51,6 +51,8 @@ type Client struct {
 	Stream *Stream
 
 	State ClientState
+
+	Caps map[string]bool
 }
 
 func NewClient() *Client {
@@ -99,16 +101,69 @@ func (c *Client) Connect() error {
 		return err
 	}
 
-	c.State = ClientStateNotAuthenticated
-
 	c.Stream = NewStream(c.Conn)
-	for {
-		resp, err := ReadResponse(c.Stream)
-		if err != nil {
+
+	c.State = ClientStateNotAuthenticated
+	if err := c.Authenticate(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) Authenticate() error {
+	// Read the greeting response
+	resp, err := ReadResponse(c.Stream)
+	if err != nil {
+		return err
+	}
+
+	auth := false
+	hasCaps := false
+	var caps []string
+
+	switch tresp := resp.(type) {
+	case *ResponseOk:
+		auth = true
+		if tresp.Text.Code == "CAPABILITY" {
+			hasCaps = true
+			caps = tresp.Text.CodeData.([]string)
+		}
+	case *ResponsePreAuth:
+		if tresp.Text.Code == "CAPABILITY" {
+			hasCaps = true
+			caps = tresp.Text.CodeData.([]string)
+		}
+	case *ResponseBye:
+		// TODO Signal connection close and return
+	default:
+		return fmt.Errorf("invalid greeting %s", resp.Name())
+	}
+
+	// Check capabilities if they are provided
+	if hasCaps {
+		if err := c.ProcessCaps(caps); err != nil {
 			return err
 		}
+	}
 
-		fmt.Printf("RESP  %#v\n", resp)
+	// Authenticate if necessary
+	if auth {
+		// TODO
+	}
+
+	return nil
+}
+
+func (c *Client) ProcessCaps(caps []string) error {
+	c.Caps = make(map[string]bool)
+
+	for _, cap := range caps {
+		c.Caps[cap] = true
+	}
+
+	if _, found := c.Caps["IMAP4rev1"]; !found {
+		return fmt.Errorf("missing IMAP4rev1 capability")
 	}
 
 	return nil
