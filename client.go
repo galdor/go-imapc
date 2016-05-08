@@ -47,7 +47,8 @@ type Client struct {
 	CertPath   string
 	KeyPath    string
 
-	Conn net.Conn
+	Conn   net.Conn
+	Stream *Stream
 
 	State ClientState
 }
@@ -99,5 +100,16 @@ func (c *Client) Connect() error {
 	}
 
 	c.State = ClientStateNotAuthenticated
+
+	c.Stream = NewStream(c.Conn)
+	for {
+		resp, err := ReadResponse(c.Stream)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("RESP  %#v\n", resp)
+	}
+
 	return nil
 }
