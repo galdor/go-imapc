@@ -18,12 +18,11 @@ package imapc
 import (
 	"encoding/base64"
 	"fmt"
-	"io"
 )
 
 type Command interface {
-	Write(io.Writer) error
-	Continue(io.Writer, *ResponseContinuation) error
+	Write(*BufferedWriter)
+	Continue(*BufferedWriter, *ResponseContinuation)
 }
 
 // ---------------------------------------------------------------------------
@@ -36,16 +35,15 @@ type CommandAuthenticatePlain struct {
 	Password string
 }
 
-func (c *CommandAuthenticatePlain) Write(w io.Writer) error {
-	_, err := io.WriteString(w, "AUTHENTICATE PLAIN\r\n")
-	return err
+func (c *CommandAuthenticatePlain) Write(w *BufferedWriter) {
+	w.AppendString("AUTHENTICATE PLAIN\r\n")
 }
 
-func (c *CommandAuthenticatePlain) Continue(w io.Writer, r *ResponseContinuation) error {
+func (c *CommandAuthenticatePlain) Continue(w *BufferedWriter, r *ResponseContinuation) {
 	creds := fmt.Sprintf("\x00%s\x00%s", c.Login, c.Password)
 	ecreds := base64.StdEncoding.EncodeToString([]byte(creds))
-	_, err := io.WriteString(w, ecreds+"\r\n")
-	return err
+	w.AppendString(ecreds)
+	w.AppendString("\r\n")
 }
 
 // CRAM-MD5 (RFC 2195)

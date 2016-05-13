@@ -52,6 +52,7 @@ type Client struct {
 
 	Conn   net.Conn
 	Stream *Stream
+	Writer *BufferedWriter
 
 	State ClientState
 
@@ -107,6 +108,7 @@ func (c *Client) Connect() error {
 	}
 
 	c.Stream = NewStream(c.Conn)
+	c.Writer = NewBufferedWriter(c.Conn)
 
 	c.State = ClientStateNotAuthenticated
 	if err := c.Authenticate(); err != nil {
@@ -193,14 +195,12 @@ func (c *Client) Authenticate() error {
 func (c *Client) SendCommand(cmd Command) error {
 	// Send a new tag
 	c.Tag++
-
-	_, err := fmt.Fprintf(c.Conn, "c%07d ", c.Tag)
-	if err != nil {
-		return err
-	}
+	fmt.Fprintf(c.Writer, "c%07d ", c.Tag)
 
 	// Send the command
-	if err := cmd.Write(c.Conn); err != nil {
+	cmd.Write(c.Writer)
+
+	if err := c.Writer.Flush(); err != nil {
 		return err
 	}
 
@@ -217,7 +217,8 @@ loop:
 		switch tresp := resp.(type) {
 		case *ResponseContinuation:
 			fmt.Printf("CONT  %#v\n", tresp)
-			if err := cmd.Continue(c.Conn, tresp); err != nil {
+			cmd.Continue(c.Writer, tresp)
+			if err := c.Writer.Flush(); err != nil {
 				return err
 			}
 		case *ResponseStatus:
