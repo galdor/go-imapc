@@ -110,10 +110,14 @@ func (c *Client) Connect() error {
 	c.Stream = NewStream(c.Conn)
 	c.Writer = NewBufferedWriter(c.Conn)
 
-	c.State = ClientStateNotAuthenticated
-
-	if err := c.Authenticate(); err != nil {
+	if err := c.ProcessGreeting(); err != nil {
 		return err
+	}
+
+	if c.State == ClientStateNotAuthenticated {
+		if err := c.Authenticate(); err != nil {
+			return err
+		}
 	}
 
 	if err := c.FetchCaps(); err != nil {
@@ -141,8 +145,7 @@ loop:
 	return nil
 }
 
-func (c *Client) Authenticate() error {
-	// Read the greeting response
+func (c *Client) ProcessGreeting() error {
 	resp, err := ReadResponse(c.Stream)
 	if err != nil {
 		return err
@@ -151,45 +154,54 @@ func (c *Client) Authenticate() error {
 	var caps []string
 	hasCaps := false
 
-	auth := false
+	authenticated := false
 
 	switch tresp := resp.(type) {
 	case *ResponseOk:
-		auth = true
 		if tresp.Text.Code == "CAPABILITY" {
 			hasCaps = true
 			caps = tresp.Text.CodeData.([]string)
 		}
+
 	case *ResponsePreAuth:
+		authenticated = true
 		if tresp.Text.Code == "CAPABILITY" {
 			hasCaps = true
 			caps = tresp.Text.CodeData.([]string)
 		}
+
 	case *ResponseBye:
-		// TODO Signal connection close and return
+		return fmt.Errorf("server shutting down: %v", tresp.Text.Text)
+
 	default:
 		return fmt.Errorf("invalid greeting %s", resp.Name())
 	}
 
-	// Check capabilities if they are provided
 	if hasCaps {
 		if err := c.ProcessCaps(caps); err != nil {
 			return err
 		}
 	}
 
-	// Authenticate if necessary
-	if auth {
-		// TODO select supported authentication mechanism
+	if authenticated {
+		c.State = ClientStateAuthenticated
+	} else {
+		c.State = ClientStateNotAuthenticated
+	}
 
-		cmd := &CommandAuthenticatePlain{
-			Login:    c.Login,
-			Password: c.Password,
-		}
+	return nil
+}
 
-		if _, _, err := c.SendCommand(cmd); err != nil {
-			return err
-		}
+func (c *Client) Authenticate() error {
+	// TODO select supported authentication mechanism
+
+	cmd := &CommandAuthenticatePlain{
+		Login:    c.Login,
+		Password: c.Password,
+	}
+
+	if _, _, err := c.SendCommand(cmd); err != nil {
+		return err
 	}
 
 	c.State = ClientStateAuthenticated
