@@ -193,11 +193,31 @@ func (c *Client) ProcessGreeting() error {
 }
 
 func (c *Client) Authenticate() error {
-	// TODO select supported authentication mechanism
+	mechanisms := []string{"CRAM-MD5", "PLAIN"}
 
-	cmd := &CommandAuthenticatePlain{
-		Login:    c.Login,
-		Password: c.Password,
+	var mechanism string
+	for _, mech := range mechanisms {
+		if c.HasCap("AUTH=" + mech) {
+			mechanism = mech
+			break
+		}
+	}
+	if mechanism == "" {
+		return fmt.Errorf("no supported authentication mechanism found")
+	}
+
+	var cmd Command
+	switch mechanism {
+	case "CRAM-MD5":
+		cmd = &CommandAuthenticateCramMD5{
+			Login:    c.Login,
+			Password: c.Password,
+		}
+	case "PLAIN":
+		cmd = &CommandAuthenticatePlain{
+			Login:    c.Login,
+			Password: c.Password,
+		}
 	}
 
 	if _, _, err := c.SendCommand(cmd); err != nil {
@@ -305,4 +325,9 @@ func (c *Client) ProcessCaps(caps []string) error {
 	}
 
 	return nil
+}
+
+func (c *Client) HasCap(cap string) bool {
+	_, found := c.Caps[cap]
+	return found
 }
