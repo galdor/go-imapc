@@ -16,13 +16,16 @@
 package imapc
 
 import (
+	"crypto/hmac"
+	"crypto/md5"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 )
 
 type Command interface {
 	Write(*BufferedWriter)
-	Continue(*BufferedWriter, *ResponseContinuation)
+	Continue(*BufferedWriter, *ResponseContinuation) error
 }
 
 // ---------------------------------------------------------------------------
@@ -39,15 +42,44 @@ func (c *CommandAuthenticatePlain) Write(w *BufferedWriter) {
 	w.AppendString("AUTHENTICATE PLAIN\r\n")
 }
 
-func (c *CommandAuthenticatePlain) Continue(w *BufferedWriter, r *ResponseContinuation) {
+func (c *CommandAuthenticatePlain) Continue(w *BufferedWriter, r *ResponseContinuation) error {
 	creds := fmt.Sprintf("\x00%s\x00%s", c.Login, c.Password)
 	ecreds := base64.StdEncoding.EncodeToString([]byte(creds))
+
 	w.AppendString(ecreds)
 	w.AppendString("\r\n")
+
+	return nil
 }
 
 // CRAM-MD5 (RFC 2195)
-// TODO
+type CommandAuthenticateCramMD5 struct {
+	Login    string
+	Password string
+}
+
+func (c *CommandAuthenticateCramMD5) Write(w *BufferedWriter) {
+	w.AppendString("AUTHENTICATE CRAM-MD5\r\n")
+}
+
+func (c *CommandAuthenticateCramMD5) Continue(w *BufferedWriter, r *ResponseContinuation) error {
+	challenge, err := base64.StdEncoding.DecodeString(r.Text)
+	if err != nil {
+		return fmt.Errorf("cannot decode challenge: %v", err)
+	}
+
+	enc := hmac.New(md5.New, []byte(c.Password))
+	enc.Write(challenge)
+	hashedPassword := hex.EncodeToString(enc.Sum(nil))
+
+	creds := c.Login + " " + hashedPassword
+	ecreds := base64.StdEncoding.EncodeToString([]byte(creds))
+
+	w.AppendString(ecreds)
+	w.AppendString("\r\n")
+
+	return nil
+}
 
 // DIGEST-MD5 (RFC 2831)
 // TODO
@@ -66,5 +98,6 @@ func (c *CommandCapability) Write(w *BufferedWriter) {
 	w.AppendString("CAPABILITY\r\n")
 }
 
-func (c *CommandCapability) Continue(w *BufferedWriter, r *ResponseContinuation) {
+func (c *CommandCapability) Continue(w *BufferedWriter, r *ResponseContinuation) error {
+	return nil
 }

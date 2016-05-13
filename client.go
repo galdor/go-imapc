@@ -223,7 +223,10 @@ loop:
 
 		switch tresp := resp.(type) {
 		case *ResponseContinuation:
-			cmd.Continue(c.Writer, tresp)
+			if err := cmd.Continue(c.Writer, tresp); err != nil {
+				return nil, nil, err
+			}
+
 			if err := c.Writer.Flush(); err != nil {
 				return nil, nil, err
 			}
