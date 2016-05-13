@@ -26,8 +26,11 @@ import (
 func main() {
 	// Command line
 	var printHelp bool
+	var login, password string
 
 	getopt.BoolVarLong(&printHelp, "help", 'h', "print help and exit")
+	getopt.StringVarLong(&login, "login", 'l', "login")
+	getopt.StringVarLong(&password, "password", 'p', "password")
 
 	getopt.CommandLine.SetParameters("<command> <args...>")
 	getopt.CommandLine.Parse(os.Args)
@@ -61,6 +64,8 @@ func main() {
 
 	// Client
 	client := imapc.NewClient()
+	client.Login = login
+	client.Password = password
 
 	if err := client.Connect(); err != nil {
 		Die("%v", err)

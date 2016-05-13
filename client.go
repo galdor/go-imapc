@@ -18,6 +18,7 @@ package imapc
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -46,6 +47,8 @@ type Client struct {
 	CACertPath string
 	CertPath   string
 	KeyPath    string
+	Login      string
+	Password   string
 
 	Conn   net.Conn
 	Stream *Stream
@@ -53,6 +56,8 @@ type Client struct {
 	State ClientState
 
 	Caps map[string]bool
+
+	Tag int
 }
 
 func NewClient() *Client {
@@ -108,6 +113,25 @@ func (c *Client) Connect() error {
 		return err
 	}
 
+	// TODO CAPABILITIES
+
+loop:
+	for {
+		resp, err := ReadResponse(c.Stream)
+		if err != nil {
+			return err
+		}
+
+		switch tresp := resp.(type) {
+		case *ResponseBye:
+			fmt.Printf("BYE   %#v\n", tresp)
+			break loop
+		default:
+			fmt.Printf("RESP  %#v\n", tresp)
+			// TODO
+		}
+	}
+
 	return nil
 }
 
@@ -118,9 +142,10 @@ func (c *Client) Authenticate() error {
 		return err
 	}
 
-	auth := false
-	hasCaps := false
 	var caps []string
+	hasCaps := false
+
+	auth := false
 
 	switch tresp := resp.(type) {
 	case *ResponseOk:
@@ -149,10 +174,79 @@ func (c *Client) Authenticate() error {
 
 	// Authenticate if necessary
 	if auth {
-		// TODO
+		// TODO select supported authentication mechanism
+
+		cmd := &CommandAuthenticatePlain{
+			Login:    c.Login,
+			Password: c.Password,
+		}
+
+		if err := c.SendCommand(cmd); err != nil {
+			return err
+		}
 	}
 
+	c.State = ClientStateAuthenticated
 	return nil
+}
+
+func (c *Client) SendCommand(cmd Command) error {
+	// Send a new tag
+	c.Tag++
+
+	_, err := fmt.Fprintf(c.Conn, "c%07d ", c.Tag)
+	if err != nil {
+		return err
+	}
+
+	// Send the command
+	if err := cmd.Write(c.Conn); err != nil {
+		return err
+	}
+
+	// Read responses until we get either the status response or a bye
+	// response
+	var res error
+loop:
+	for {
+		resp, err := ReadResponse(c.Stream)
+		if err != nil {
+			return err
+		}
+
+		switch tresp := resp.(type) {
+		case *ResponseContinuation:
+			fmt.Printf("CONT  %#v\n", tresp)
+			if err := cmd.Continue(c.Conn, tresp); err != nil {
+				return err
+			}
+		case *ResponseStatus:
+			switch status := tresp.Response.(type) {
+			case *ResponseOk:
+				fmt.Printf("OK    %#v\n", tresp)
+				res = nil
+				break loop
+			case *ResponseNo:
+				fmt.Printf("NO    %#v\n", tresp)
+				res = errors.New(status.Text.Text)
+				break loop
+			case *ResponseBad:
+				fmt.Printf("BAD   %#v\n", tresp)
+				res = errors.New(status.Text.Text)
+				break loop
+			}
+		case *ResponseBye:
+			fmt.Printf("BYE   %#v\n", tresp)
+			res = fmt.Errorf("server shutting down: %v",
+				tresp.Text.Text)
+			break loop
+		default:
+			fmt.Printf("RESP  %#v\n", tresp)
+			// TODO
+		}
+	}
+
+	return res
 }
 
 func (c *Client) ProcessCaps(caps []string) error {

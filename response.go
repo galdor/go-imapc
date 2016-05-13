@@ -26,10 +26,6 @@ type Response interface {
 }
 
 func ReadResponse(s *Stream) (Response, error) {
-	// XXX debug
-	s.Peek(40)
-	fmt.Printf("DATA  %q\n", string(s.Buf))
-
 	prefix, err := s.Peek(1)
 	if err != nil {
 		return nil, err
@@ -79,22 +75,82 @@ func ReadResponse(s *Stream) (Response, error) {
 // ---------------------------------------------------------------------------
 func ReadResponseStatus(s *Stream) (Response, error) {
 	// Read the tag
-	_, err := s.ReadUntilByteAndSkip(' ')
+	tag, err := s.ReadUntilByteAndSkip(' ')
 	if err != nil {
 		return nil, err
 	}
 
 	// Read the response name
-	_, err = s.ReadUntilByteAndSkip(' ')
+	name, err := s.ReadUntilByteAndSkip(' ')
 	if err != nil {
 		return nil, err
 	}
 
-	var r Response
-	// TODO
-	r = nil
+	r := &ResponseStatus{
+		Tag:          string(tag),
+		ResponseName: string(name),
+	}
+
+	switch string(name) {
+	case "OK":
+		r.Response = &ResponseOk{}
+	case "NO":
+		r.Response = &ResponseNo{}
+	case "BAD":
+		r.Response = &ResponseBad{}
+	default:
+		return nil, fmt.Errorf("unknown response %q", name)
+	}
 
 	return r, nil
+}
+
+type ResponseStatus struct {
+	Tag          string
+	ResponseName string
+	Response     Response
+}
+
+func (r *ResponseStatus) Name() string { return r.ResponseName }
+
+func (r *ResponseStatus) Read(s *Stream) error {
+	return r.Response.Read(s)
+}
+
+// OK
+type ResponseOk struct {
+	Text *ResponseText
+}
+
+func (r *ResponseOk) Name() string { return "OK" }
+
+func (r *ResponseOk) Read(s *Stream) error {
+	r.Text = &ResponseText{}
+	return r.Text.Read(s)
+}
+
+// NO
+type ResponseNo struct {
+	Text *ResponseText
+}
+
+func (r *ResponseNo) Name() string { return "NO" }
+
+func (r *ResponseNo) Read(s *Stream) error {
+	r.Text = &ResponseText{}
+	return r.Text.Read(s)
+}
+
+// BAD
+type ResponseBad struct {
+	Text *ResponseText
+}
+
+func (r *ResponseBad) Name() string { return "BAD" }
+
+func (r *ResponseBad) Read(s *Stream) error {
+	r.Text = &ResponseText{}
+	return r.Text.Read(s)
 }
 
 // ---------------------------------------------------------------------------
@@ -122,18 +178,6 @@ func ReadResponseData(s *Stream) (Response, error) {
 	}
 
 	return r, nil
-}
-
-// OK
-type ResponseOk struct {
-	Text *ResponseText
-}
-
-func (r *ResponseOk) Name() string { return "OK" }
-
-func (r *ResponseOk) Read(s *Stream) error {
-	r.Text = &ResponseText{}
-	return r.Text.Read(s)
 }
 
 // PREAUTH
@@ -170,11 +214,23 @@ func ReadResponseContinuation(s *Stream) (Response, error) {
 		return nil, err
 	}
 
-	var r Response
-	// TODO
-	r = nil
+	return &ResponseContinuation{}, nil
+}
 
-	return r, nil
+type ResponseContinuation struct {
+	Text string
+}
+
+func (r *ResponseContinuation) Name() string { return "" }
+
+func (r *ResponseContinuation) Read(s *Stream) error {
+	text, err := s.ReadUntilAndSkip([]byte("\r\n"))
+	if err != nil {
+		return err
+	}
+	r.Text = string(text)
+
+	return nil
 }
 
 // ---------------------------------------------------------------------------
@@ -196,17 +252,18 @@ func (r *ResponseText) Read(s *Stream) error {
 		return err
 	} else if found {
 		// Response text code
-		code, err := s.ReadUntilByteAndSkip(' ')
-		if err != nil {
-			return err
-		}
-		r.Code = string(code)
-
-		codeBytes, err := s.PeekUntil([]byte("] "))
+		codeBytes, err := s.ReadUntilAndSkip([]byte("] "))
 		if err != nil {
 			return err
 		}
 		r.CodeString = string(codeBytes)
+
+		idx := bytes.IndexByte(codeBytes, ' ')
+		if idx == -1 {
+			r.Code = string(codeBytes)
+		} else {
+			r.Code = string(codeBytes[0:idx])
+		}
 
 		switch r.Code {
 		case "BADCHARSET":
@@ -226,10 +283,6 @@ func (r *ResponseText) Read(s *Stream) error {
 				caps[i] = string(cap)
 			}
 			r.CodeData = caps
-		}
-
-		if err := s.Skip(len(codeBytes) + 2); err != nil {
-			return err
 		}
 	}
 
