@@ -54,3 +54,17 @@ func (c *CommandAuthenticatePlain) Continue(w *BufferedWriter, r *ResponseContin
 
 // SCRAM-SHA-1 (RFC 5802)
 // TODO
+
+// ---------------------------------------------------------------------------
+//  Command: CAPABILITY
+//  RFC 3501 6.1.1.
+// ---------------------------------------------------------------------------
+type CommandCapability struct {
+}
+
+func (c *CommandCapability) Write(w *BufferedWriter) {
+	w.AppendString("CAPABILITY\r\n")
+}
+
+func (c *CommandCapability) Continue(w *BufferedWriter, r *ResponseContinuation) {
+}

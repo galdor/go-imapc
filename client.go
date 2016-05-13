@@ -111,12 +111,16 @@ func (c *Client) Connect() error {
 	c.Writer = NewBufferedWriter(c.Conn)
 
 	c.State = ClientStateNotAuthenticated
+
 	if err := c.Authenticate(); err != nil {
 		return err
 	}
 
-	// TODO CAPABILITIES
+	if err := c.FetchCaps(); err != nil {
+		return err
+	}
 
+	// Main loop
 loop:
 	for {
 		resp, err := ReadResponse(c.Stream)
@@ -183,7 +187,7 @@ func (c *Client) Authenticate() error {
 			Password: c.Password,
 		}
 
-		if err := c.SendCommand(cmd); err != nil {
+		if _, _, err := c.SendCommand(cmd); err != nil {
 			return err
 		}
 	}
@@ -192,7 +196,7 @@ func (c *Client) Authenticate() error {
 	return nil
 }
 
-func (c *Client) SendCommand(cmd Command) error {
+func (c *Client) SendCommand(cmd Command) ([]Response, *ResponseStatus, error) {
 	// Send a new tag
 	c.Tag++
 	fmt.Fprintf(c.Writer, "c%07d ", c.Tag)
@@ -201,27 +205,32 @@ func (c *Client) SendCommand(cmd Command) error {
 	cmd.Write(c.Writer)
 
 	if err := c.Writer.Flush(); err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	// Read responses until we get either the status response or a bye
 	// response
 	var res error
+	var dataResponses []Response
+	var statusResponse *ResponseStatus
+
 loop:
 	for {
 		resp, err := ReadResponse(c.Stream)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 
 		switch tresp := resp.(type) {
 		case *ResponseContinuation:
-			fmt.Printf("CONT  %#v\n", tresp)
 			cmd.Continue(c.Writer, tresp)
 			if err := c.Writer.Flush(); err != nil {
-				return err
+				return nil, nil, err
 			}
+
 		case *ResponseStatus:
+			statusResponse = tresp
+
 			switch status := tresp.Response.(type) {
 			case *ResponseOk:
 				fmt.Printf("OK    %#v\n", tresp)
@@ -236,18 +245,37 @@ loop:
 				res = errors.New(status.Text.Text)
 				break loop
 			}
+
 		case *ResponseBye:
-			fmt.Printf("BYE   %#v\n", tresp)
 			res = fmt.Errorf("server shutting down: %v",
 				tresp.Text.Text)
 			break loop
+
 		default:
-			fmt.Printf("RESP  %#v\n", tresp)
-			// TODO
+			dataResponses = append(dataResponses, resp)
 		}
 	}
 
-	return res
+	return dataResponses, statusResponse, res
+}
+
+func (c *Client) FetchCaps() error {
+	cmd := &CommandCapability{}
+	resps, _, err := c.SendCommand(cmd)
+	if err != nil {
+		return err
+	}
+
+	for _, resp := range resps {
+		tresp, ok := resp.(*ResponseCapability)
+		if ok {
+			if err := c.ProcessCaps(tresp.Caps); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (c *Client) ProcessCaps(caps []string) error {

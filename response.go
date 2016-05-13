@@ -173,6 +173,12 @@ func ReadResponseData(s *Stream) (Response, error) {
 	switch string(name) {
 	case "OK":
 		r = &ResponseOk{}
+	case "PREAUTH":
+		r = &ResponsePreAuth{}
+	case "BYE":
+		r = &ResponseBye{}
+	case "CAPABILITY":
+		r = &ResponseCapability{}
 	default:
 		return nil, fmt.Errorf("unknown response %q", name)
 	}
@@ -202,6 +208,29 @@ func (r *ResponseBye) Name() string { return "BYE" }
 func (r *ResponseBye) Read(s *Stream) error {
 	r.Text = &ResponseText{}
 	return r.Text.Read(s)
+}
+
+// CAPABILITY
+type ResponseCapability struct {
+	Caps []string
+}
+
+func (r *ResponseCapability) Name() string { return "CAPABILITY" }
+
+func (r *ResponseCapability) Read(s *Stream) error {
+	data, err := s.ReadUntilAndSkip([]byte("\r\n"))
+	if err != nil {
+		return err
+	}
+
+	parts := bytes.Split(data, []byte{' '})
+
+	r.Caps = make([]string, len(parts))
+	for i, cap := range parts {
+		r.Caps[i] = string(cap)
+	}
+
+	return nil
 }
 
 // ---------------------------------------------------------------------------
@@ -293,6 +322,5 @@ func (r *ResponseText) Read(s *Stream) error {
 	}
 
 	r.Text = string(text)
-	fmt.Printf("TEXT  %#v\n", r)
 	return nil
 }
