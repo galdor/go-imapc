@@ -71,7 +71,6 @@ func ReadResponse(s *Stream) (Response, error) {
 
 // ---------------------------------------------------------------------------
 //  Status responses
-//  RFC 3501 7.1.
 // ---------------------------------------------------------------------------
 func ReadResponseStatus(s *Stream) (Response, error) {
 	// Read the tag
@@ -155,7 +154,6 @@ func (r *ResponseBad) Read(s *Stream) error {
 
 // ---------------------------------------------------------------------------
 //  Server data responses
-//  RFC 3501 7.2., 7.3., 7.4.
 // ---------------------------------------------------------------------------
 func ReadResponseData(s *Stream) (Response, error) {
 	// Skip "* "
@@ -235,7 +233,6 @@ func (r *ResponseCapability) Read(s *Stream) error {
 
 // ---------------------------------------------------------------------------
 //  Command continuation responses
-//  RFC 3501 7.5.
 // ---------------------------------------------------------------------------
 func ReadResponseContinuation(s *Stream) (Response, error) {
 	// Skip "+ "
@@ -264,7 +261,6 @@ func (r *ResponseContinuation) Read(s *Stream) error {
 
 // ---------------------------------------------------------------------------
 //  Response text
-//  RFC 3501 7.1.
 // ---------------------------------------------------------------------------
 type ResponseText struct {
 	Text string

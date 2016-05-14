@@ -30,7 +30,6 @@ type Command interface {
 
 // ---------------------------------------------------------------------------
 //  Command: AUTHENTICATE
-//  RFC 3501 6.2.2.
 // ---------------------------------------------------------------------------
 // PLAIN (RFC 4616)
 type CommandAuthenticatePlain struct {
@@ -89,7 +88,6 @@ func (c *CommandAuthenticateCramMD5) Continue(w *BufferedWriter, r *ResponseCont
 
 // ---------------------------------------------------------------------------
 //  Command: CAPABILITY
-//  RFC 3501 6.1.1.
 // ---------------------------------------------------------------------------
 type CommandCapability struct {
 }

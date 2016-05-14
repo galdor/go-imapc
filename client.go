@@ -26,7 +26,6 @@ import (
 
 // ---------------------------------------------------------------------------
 //  Client state
-//  RFC 3501 3.
 // ---------------------------------------------------------------------------
 type ClientState string
 
@@ -282,15 +281,12 @@ loop:
 
 			switch status := tresp.Response.(type) {
 			case *ResponseOk:
-				fmt.Printf("OK    %#v\n", tresp)
 				res = nil
 				break loop
 			case *ResponseNo:
-				fmt.Printf("NO    %#v\n", tresp)
 				res = errors.New(status.Text.Text)
 				break loop
 			case *ResponseBad:
-				fmt.Printf("BAD   %#v\n", tresp)
 				res = errors.New(status.Text.Text)
 				break loop
 			}
