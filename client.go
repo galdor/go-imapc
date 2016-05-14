@@ -47,8 +47,10 @@ type Client struct {
 	CACertPath string
 	CertPath   string
 	KeyPath    string
-	Login      string
-	Password   string
+
+	AuthMechanism string
+	Login         string
+	Password      string
 
 	Conn   net.Conn
 	Stream *Stream
@@ -196,14 +198,24 @@ func (c *Client) Authenticate() error {
 	mechanisms := []string{"CRAM-MD5", "PLAIN"}
 
 	var mechanism string
-	for _, mech := range mechanisms {
-		if c.HasCap("AUTH=" + mech) {
-			mechanism = mech
-			break
+
+	if c.AuthMechanism == "" {
+		for _, mech := range mechanisms {
+			if c.HasCap("AUTH=" + mech) {
+				mechanism = mech
+				break
+			}
 		}
-	}
-	if mechanism == "" {
-		return fmt.Errorf("no supported authentication mechanism found")
+		if mechanism == "" {
+			return fmt.Errorf("no supported authentication " +
+				"mechanism found")
+		}
+	} else {
+		if !c.HasCap("AUTH=" + c.AuthMechanism) {
+			return fmt.Errorf("unsupported authentication " +
+				"mechanism")
+		}
+		mechanism = c.AuthMechanism
 	}
 
 	var cmd Command
@@ -218,6 +230,8 @@ func (c *Client) Authenticate() error {
 			Login:    c.Login,
 			Password: c.Password,
 		}
+	default:
+		return fmt.Errorf("unknown authentication mechanism")
 	}
 
 	if _, _, err := c.SendCommand(cmd); err != nil {
