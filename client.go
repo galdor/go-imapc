@@ -242,12 +242,90 @@ func (c *Client) Authenticate() error {
 }
 
 func (c *Client) SendCommand(cmd Command) ([]Response, *ResponseStatus, error) {
+	var res error
+	var dataResponses []Response
+	var statusResponse *ResponseStatus
+
+	sendLiteral := func(l Literal) error {
+		data := []byte(l)
+
+		fmt.Fprintf(c.Writer, " {%d}\r\n", len(data))
+		if err := c.Writer.Flush(); err != nil {
+			return err
+		}
+
+	loop:
+		for {
+			resp, err := ReadResponse(c.Stream)
+			if err != nil {
+				return err
+			}
+
+			switch tresp := resp.(type) {
+			case *ResponseContinuation:
+				c.Writer.Append(data)
+
+				if err := c.Writer.Flush(); err != nil {
+					return err
+				}
+
+				break loop
+
+			case *ResponseStatus:
+				statusResponse = tresp
+
+				switch status := tresp.Response.(type) {
+				case *ResponseOk:
+					return errors.New("ok response " +
+						" received while sending " +
+						"literal")
+				case *ResponseNo:
+					return errors.New(status.Text.Text)
+				case *ResponseBad:
+					return errors.New(status.Text.Text)
+				}
+
+			case *ResponseBye:
+				return fmt.Errorf("server shutting down: %v",
+					tresp.Text.Text)
+
+			default:
+				dataResponses = append(dataResponses, resp)
+			}
+		}
+
+		return nil
+	}
+
 	// Send a new tag
 	c.Tag++
 	fmt.Fprintf(c.Writer, "c%07d ", c.Tag)
 
 	// Send the command
-	cmd.Write(c.Writer)
+	args := cmd.Args()
+	for i, arg := range args {
+		if i > 0 {
+			c.Writer.AppendString(" ")
+		}
+
+		switch targ := arg.(type) {
+		case []byte:
+			c.Writer.Append(targ)
+
+		case string:
+			c.Writer.AppendString(targ)
+
+		case Literal:
+			if err := sendLiteral(targ); err != nil {
+				return nil, nil, err
+			}
+
+		default:
+			panic("invalid command argument")
+		}
+	}
+
+	c.Writer.AppendString("\r\n")
 
 	if err := c.Writer.Flush(); err != nil {
 		return nil, nil, err
@@ -255,9 +333,6 @@ func (c *Client) SendCommand(cmd Command) ([]Response, *ResponseStatus, error) {
 
 	// Read responses until we get either the status response or a bye
 	// response
-	var res error
-	var dataResponses []Response
-	var statusResponse *ResponseStatus
 
 loop:
 	for {

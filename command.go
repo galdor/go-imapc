@@ -24,9 +24,11 @@ import (
 )
 
 type Command interface {
-	Write(*BufferedWriter)
+	Args() []interface{}
 	Continue(*BufferedWriter, *ResponseContinuation) error
 }
+
+type Literal []byte
 
 // ---------------------------------------------------------------------------
 //  Command: AUTHENTICATE
@@ -37,8 +39,8 @@ type CommandAuthenticatePlain struct {
 	Password string
 }
 
-func (c *CommandAuthenticatePlain) Write(w *BufferedWriter) {
-	w.AppendString("AUTHENTICATE PLAIN\r\n")
+func (c *CommandAuthenticatePlain) Args() []interface{} {
+	return []interface{}{"AUTHENTICATE", "PLAIN"}
 }
 
 func (c *CommandAuthenticatePlain) Continue(w *BufferedWriter, r *ResponseContinuation) error {
@@ -57,8 +59,8 @@ type CommandAuthenticateCramMD5 struct {
 	Password string
 }
 
-func (c *CommandAuthenticateCramMD5) Write(w *BufferedWriter) {
-	w.AppendString("AUTHENTICATE CRAM-MD5\r\n")
+func (c *CommandAuthenticateCramMD5) Args() []interface{} {
+	return []interface{}{"AUTHENTICATE", "CRAM-MD5"}
 }
 
 func (c *CommandAuthenticateCramMD5) Continue(w *BufferedWriter, r *ResponseContinuation) error {
@@ -92,8 +94,8 @@ func (c *CommandAuthenticateCramMD5) Continue(w *BufferedWriter, r *ResponseCont
 type CommandCapability struct {
 }
 
-func (c *CommandCapability) Write(w *BufferedWriter) {
-	w.AppendString("CAPABILITY\r\n")
+func (c *CommandCapability) Args() []interface{} {
+	return []interface{}{"CAPABILITY"}
 }
 
 func (c *CommandCapability) Continue(w *BufferedWriter, r *ResponseContinuation) error {
