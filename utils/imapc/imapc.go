@@ -19,43 +19,31 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/galdor/go-cmdline"
 	"github.com/galdor/go-imapc"
-	"github.com/pborman/getopt"
 )
 
 func main() {
 	// Command line
-	var printHelp bool
-	var login, password string
+	cmdline := cmdline.New()
 
-	getopt.BoolVarLong(&printHelp, "help", 'h', "print help and exit")
-	getopt.StringVarLong(&login, "login", 'l', "login")
-	getopt.StringVarLong(&password, "password", 'p', "password")
+	cmdline.AddOption("l", "login", "login", "set the login")
+	cmdline.AddOption("p", "password", "password", "set the password")
 
-	getopt.CommandLine.SetParameters("<command> <args...>")
-	getopt.CommandLine.Parse(os.Args)
+	cmdline.AddCommand("connect", "connect to a server")
 
-	if printHelp {
-		getopt.CommandLine.PrintUsage(os.Stdout)
-		os.Exit(0)
-	}
+	cmdline.Parse(os.Args)
 
-	args := getopt.CommandLine.Args()
+	login := cmdline.OptionValue("login")
+	password := cmdline.OptionValue("password")
 
-	if len(args) < 1 {
-		Die("missing argument")
-	}
-
-	cmd := args[0]
-	cmdArgs := args[1:]
+	cmd := cmdline.CommandName()
+	cmdArgs := cmdline.CommandArgumentsValues()
 
 	// Command
 	var cmdFn func(*imapc.Client, []string)
 
 	switch cmd {
-	case "help":
-		getopt.CommandLine.PrintUsage(os.Stdout)
-		return
 	case "connect":
 		cmdFn = CmdConnect
 	default:
