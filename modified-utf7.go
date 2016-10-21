@@ -22,112 +22,108 @@ import (
 	"unicode/utf8"
 )
 
-func ModifiedUTF7Encode(s string) string {
+func ModifiedUTF7Encode(data []byte) []byte {
 	buf := bytes.NewBuffer([]byte{})
-
-	sb := []byte(s)
 
 loop:
 	for {
 		// Find the next non-directly encodable character
-		end := bytes.IndexFunc(sb, func(r rune) bool {
+		end := bytes.IndexFunc(data, func(r rune) bool {
 			return (r < 0x20 || r > 0x7e)
 		})
 
 		// Write all directly encodable characters
 		if end == -1 {
-			end = len(sb)
+			end = len(data)
 		}
 
 		for i := 0; i < end; i++ {
-			if sb[i] == '&' {
+			if data[i] == '&' {
 				buf.WriteString("&-")
 			} else {
-				buf.WriteByte(sb[i])
+				buf.WriteByte(data[i])
 			}
 		}
 
-		if end == len(sb) {
+		if end == len(data) {
 			break loop
 		}
 
-		sb = sb[end:]
+		data = data[end:]
 
 		// Find the next directly encodable character
-		end = bytes.IndexFunc(sb, func(r rune) bool {
+		end = bytes.IndexFunc(data, func(r rune) bool {
 			return (r >= 0x20 && r <= 0x7e)
 		})
 
 		if end == -1 {
-			end = len(sb)
+			end = len(data)
 		}
 
 		// Encode and write non-directly encodable characters
 		buf.WriteByte('&')
-		buf.Write(ModifiedBase64Encode(sb[:end]))
+		buf.Write(ModifiedBase64Encode(data[:end]))
 		buf.WriteByte('-')
 
 		// Skip to the end of the sequence
-		if end == len(sb) {
+		if end == len(data) {
 			break loop
 		}
 
-		sb = sb[end:]
+		data = data[end:]
 	}
 
-	return buf.String()
+	return buf.Bytes()
 }
 
-func ModifiedUTF7Decode(s string) (string, error) {
+func ModifiedUTF7Decode(data []byte) ([]byte, error) {
 	buf := bytes.NewBuffer([]byte{})
 
-	sb := []byte(s)
-
 loop:
-	for len(sb) > 0 {
+	for len(data) > 0 {
 		// Find the next encoded sequence
-		end := bytes.IndexByte(sb, byte('&'))
+		end := bytes.IndexByte(data, byte('&'))
 
 		if end == -1 {
-			buf.Write(sb)
+			buf.Write(data)
 			break
 		}
 
 		// Write and skip directly encoded characters
-		buf.Write(sb[:end])
+		buf.Write(data[:end])
 
-		sb = sb[end:]
+		data = data[end:]
 
 		// Find the end of the sequence
-		end = bytes.IndexByte(sb, byte('-'))
+		end = bytes.IndexByte(data, byte('-'))
 		if end == -1 {
 			// '&' without '-'
-			return "", fmt.Errorf("invalid modified utf7 encoding")
+			return nil, fmt.Errorf("invalid modified utf7 encoding")
 		}
 
 		if end == 1 {
 			buf.WriteByte('&')
-			sb = sb[2:]
+			data = data[2:]
 			continue
 		}
 
 		// Decode and write the sequence
-		seq, err := ModifiedBase64Decode(sb[1:end])
+		seq, err := ModifiedBase64Decode(data[1:end])
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		buf.Write(seq)
 
 		// Skip to the end of the sequence
-		if end == len(sb) {
+		if end == len(data) {
 			break loop
 		}
 
-		sb = sb[end+1:]
+		data = data[end+1:]
 	}
 
-	return buf.String(), nil
+	return buf.Bytes(), nil
 }
 
 func ModifiedBase64Encode(data []byte) []byte {

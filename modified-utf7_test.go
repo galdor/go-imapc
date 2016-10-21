@@ -35,8 +35,8 @@ var Tests = []struct {
 
 func TestModifiedUTF7Encode(t *testing.T) {
 	for _, test := range Tests {
-		estr := ModifiedUTF7Encode(test.str)
-		if estr != test.estr {
+		estr := ModifiedUTF7Encode([]byte(test.str))
+		if string(estr) != test.estr {
 			t.Errorf("%q was encoded as %q instead of %q",
 				test.str, estr, test.estr)
 		}
@@ -45,13 +45,13 @@ func TestModifiedUTF7Encode(t *testing.T) {
 
 func TestModifiedUTF7Decode(t *testing.T) {
 	for _, test := range Tests {
-		str, err := ModifiedUTF7Decode(test.estr)
+		str, err := ModifiedUTF7Decode([]byte(test.estr))
 		if err != nil {
 			t.Errorf("cannot decode %q: %v", test.estr, err)
 			continue
 		}
 
-		if str != test.str {
+		if string(str) != test.str {
 			t.Errorf("%q was decoded as %q instead of %q",
 				test.estr, str, test.str)
 		}
@@ -66,7 +66,7 @@ func TestModifiedUTF7DecodeInvalid(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		_, err := ModifiedUTF7Decode(test)
+		_, err := ModifiedUTF7Decode([]byte(test))
 		if err == nil {
 			t.Errorf("decoded invalid string %q", test)
 			continue
