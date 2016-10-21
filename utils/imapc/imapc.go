@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/galdor/imapc"
+	"github.com/galdor/go-imapc"
 	"github.com/pborman/getopt"
 )
 
