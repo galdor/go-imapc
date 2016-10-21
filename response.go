@@ -177,6 +177,8 @@ func ReadResponseData(s *Stream) (Response, error) {
 		r = &ResponseBye{}
 	case "CAPABILITY":
 		r = &ResponseCapability{}
+	case "LIST":
+		r = &ResponseList{}
 	default:
 		return nil, fmt.Errorf("unknown response %q", name)
 	}
@@ -226,6 +228,96 @@ func (r *ResponseCapability) Read(s *Stream) error {
 	r.Caps = make([]string, len(parts))
 	for i, cap := range parts {
 		r.Caps[i] = string(cap)
+	}
+
+	return nil
+}
+
+// LIST
+type ResponseList struct {
+	MailboxFlags       []string
+	HierarchyDelimiter rune
+	MailboxName        string
+}
+
+func (r *ResponseList) Name() string { return "LIST" }
+
+func (r *ResponseList) Read(s *Stream) error {
+	// Mailbox flags
+	if found, err := s.SkipByte('('); err != nil {
+		return err
+	} else if !found {
+		return fmt.Errorf("missing '(' for mailbox flags")
+	}
+
+	flagData, err := s.ReadUntilByteAndSkip(')')
+	if err != nil {
+		return err
+	}
+
+	parts := bytes.Split(flagData, []byte{' '})
+	r.MailboxFlags = make([]string, len(parts))
+	for i, part := range parts {
+		if part[0] != '\\' {
+			return fmt.Errorf("invalid mailbox flag %q",
+				string(part))
+		}
+
+		r.MailboxFlags[i] = string(part[1:])
+	}
+
+	if found, err := s.SkipByte(' '); err != nil {
+		return err
+	} else if !found {
+		return fmt.Errorf("missing space after mailbox flags")
+	}
+
+	// Hierarchy delimiter
+	if found, err := s.SkipByte('"'); err != nil {
+		return err
+	} else if !found {
+		return fmt.Errorf("missing first '\"' for hierarchy delimiter")
+	}
+
+	if found, err := s.SkipBytes([]byte("NIL")); err != nil {
+		return err
+	} else if !found {
+		c, _, err := s.ReadIMAPQuotedChar()
+		if err != nil {
+			return err
+		}
+
+		r.HierarchyDelimiter = rune(c)
+	}
+
+	if found, err := s.SkipByte('"'); err != nil {
+		return err
+	} else if !found {
+		return fmt.Errorf("missing last '\"' for hierarchy delimiter")
+	}
+
+	if found, err := s.SkipByte(' '); err != nil {
+		return err
+	} else if !found {
+		return fmt.Errorf("missing space after hierarchy delimiter")
+	}
+
+	// Name
+	encodedName, err := s.ReadIMAPAstring()
+	if err != nil {
+		return err
+	}
+	name, err := ModifiedUTF7Decode(encodedName)
+	if err != nil {
+		return fmt.Errorf("invalid mailbox name: %v", err)
+	}
+	r.MailboxName = string(name)
+
+	// End
+	if ok, err := s.SkipBytes([]byte("\r\n")); err != nil {
+		return err
+	} else if !ok {
+		return fmt.Errorf("invalid character after mailbox name")
 	}
 
 	return nil

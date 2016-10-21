@@ -416,3 +416,20 @@ func (c *Client) HasCap(cap string) bool {
 	_, found := c.Caps[cap]
 	return found
 }
+
+func (c *Client) ListMailboxes() ([]*ResponseList, error) {
+	cmd := &CommandList{
+		Pattern: "*",
+	}
+	resps, _, err := c.SendCommand(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	mailboxes := []*ResponseList{}
+	for _, resp := range resps {
+		mailboxes = append(mailboxes, resp.(*ResponseList))
+	}
+
+	return mailboxes, nil
+}

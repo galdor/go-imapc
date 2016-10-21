@@ -101,3 +101,23 @@ func (c *CommandCapability) Args() []interface{} {
 func (c *CommandCapability) Continue(w *BufferedWriter, r *ResponseContinuation) error {
 	return nil
 }
+
+// ---------------------------------------------------------------------------
+//  Command: LIST
+// ---------------------------------------------------------------------------
+type CommandList struct {
+	Ref     string
+	Pattern string
+}
+
+func (c *CommandList) Args() []interface{} {
+	// TODO modified utf7 encoding
+	ref := QuoteString(c.Ref)
+	pattern := QuoteString(c.Pattern)
+
+	return []interface{}{"LIST", ref, pattern}
+}
+
+func (c *CommandList) Continue(w *BufferedWriter, r *ResponseContinuation) error {
+	return nil
+}

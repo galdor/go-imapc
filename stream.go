@@ -17,7 +17,10 @@ package imapc
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"math"
+	"strconv"
 )
 
 type Stream struct {
@@ -45,6 +48,33 @@ func (s *Stream) Peek(n int) ([]byte, error) {
 	}
 
 	return dupBytes(s.Buf[0:n]), nil
+}
+
+func (s *Stream) PeekUpTo(n int) ([]byte, error) {
+	data, err := s.Peek(n)
+	if err != nil && err != io.ErrUnexpectedEOF {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+func (s *Stream) StartsWithBytes(bs []byte) (bool, error) {
+	data, err := s.Peek(len(bs))
+	if err != nil {
+		return false, err
+	}
+
+	return bytes.Equal(data, bs), nil
+}
+
+func (s *Stream) StartsWithByte(b byte) (bool, error) {
+	data, err := s.Peek(1)
+	if err != nil {
+		return false, err
+	}
+
+	return data[0] == b, nil
 }
 
 func (s *Stream) Skip(n int) error {
@@ -82,6 +112,38 @@ func (s *Stream) Read(n int) ([]byte, error) {
 	}
 
 	s.Buf = s.Buf[n:]
+	return data, nil
+}
+
+func (s *Stream) ReadWhile(fn func(byte) bool) ([]byte, error) {
+	const blockSize = 32
+
+	data := []byte{}
+
+loop:
+	for {
+		block, err := s.PeekUpTo(blockSize)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, b := range block {
+			if !fn(b) {
+				if err := s.Skip(i); err != nil {
+					return nil, err
+				}
+
+				break loop
+			}
+
+			data = append(data, b)
+		}
+
+		if err := s.Skip(blockSize); err != nil {
+			return nil, err
+		}
+	}
+
 	return data, nil
 }
 
@@ -133,6 +195,127 @@ func (s *Stream) ReadUntilByte(delim byte) ([]byte, error) {
 
 func (s *Stream) ReadUntilByteAndSkip(delim byte) ([]byte, error) {
 	return s.ReadUntilAndSkip([]byte{delim})
+}
+
+func (s *Stream) ReadIMAPQuotedChar() (byte, bool, error) {
+	data, err := s.Read(1)
+	if err != nil {
+		return 0, false, err
+	}
+
+	var c byte
+	quoted := false
+
+	if data[0] == '\\' {
+		data, err = s.Read(1)
+		if err != nil {
+			return 0, false, err
+		}
+
+		if !IsQuotedSpecialChar(data[0]) {
+			return 0, false,
+				fmt.Errorf("invalid quoted character %q", c)
+		}
+
+		quoted = true
+	}
+
+	if data[0] == '\r' || data[0] == '\n' {
+		return c, quoted, fmt.Errorf("invalid quoted character %q", c)
+	}
+
+	return data[0], quoted, nil
+}
+
+func (s *Stream) ReadIMAPAstring() ([]byte, error) {
+	if ok, err := s.StartsWithByte('"'); err != nil {
+		return nil, err
+	} else if ok {
+		return s.ReadIMAPQuotedString()
+	}
+
+	if ok, err := s.StartsWithByte('{'); err != nil {
+		return nil, err
+	} else if ok {
+		return s.ReadIMAPLiteralString()
+	}
+
+	data, err := s.ReadWhile(IsAstringChar)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+func (s *Stream) ReadIMAPQuotedString() ([]byte, error) {
+	if found, err := s.SkipByte('"'); err != nil {
+		return nil, err
+	} else if !found {
+		return nil, fmt.Errorf("missing first '\"' for quoted string")
+	}
+
+	data := []byte{}
+
+loop:
+	for {
+		c, quoted, err := s.ReadIMAPQuotedChar()
+		if err != nil {
+			return nil, err
+		}
+
+		if c == '"' && !quoted {
+			break loop
+		}
+
+		data = append(data, c)
+	}
+
+	if found, err := s.SkipByte('"'); err != nil {
+		return nil, err
+	} else if !found {
+		return nil, fmt.Errorf("missing last '\"' for quoted string")
+	}
+
+	return data, nil
+}
+
+func (s *Stream) ReadIMAPLiteralString() ([]byte, error) {
+	if found, err := s.SkipByte('{'); err != nil {
+		return nil, err
+	} else if !found {
+		return nil, fmt.Errorf("missing '{' for literal string")
+	}
+
+	countData, err := s.ReadUntilByteAndSkip('}')
+	if err != nil {
+		return nil, err
+	}
+
+	count, err := strconv.ParseUint(string(countData), 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("invalid literal string size")
+	}
+
+	// Go uses the 'int' type for all length, but it can be 32 bit on 32
+	// bit platform.
+	if count > math.MaxInt32 {
+		return nil, fmt.Errorf("literal string size too large")
+	}
+
+	if found, err := s.SkipBytes([]byte("\r\n")); err != nil {
+		return nil, err
+	} else if !found {
+		return nil,
+			fmt.Errorf("missing \\r\\n after literal string size")
+	}
+
+	data, err := s.Read(int(count))
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }
 
 func dupBytes(data []byte) []byte {
