@@ -28,6 +28,11 @@ type Command interface {
 	Continue(*BufferedWriter, *ResponseContinuation) error
 }
 
+type CommandResponse struct {
+	Data   []Response
+	Status *ResponseStatus
+}
+
 type Literal []byte
 
 // ---------------------------------------------------------------------------

@@ -30,6 +30,7 @@ import (
 type ClientState string
 
 const (
+	ClientStateDisconnected     ClientState = "disconnected"
 	ClientStateNotAuthenticated ClientState = "not-authenticated"
 	ClientStateAuthenticated    ClientState = "authenticated"
 	ClientStateSelected         ClientState = "selected"
@@ -60,12 +61,18 @@ type Client struct {
 	Caps map[string]bool
 
 	Tag int
+
+	stopChan chan int
+	cmdChan  chan Command
+	respChan chan *CommandResponse
 }
 
 func NewClient() *Client {
 	return &Client{
 		Host: "localhost",
 		Port: 143,
+
+		State: ClientStateDisconnected,
 	}
 }
 
@@ -111,42 +118,210 @@ func (c *Client) Connect() error {
 	c.Stream = NewStream(c.Conn)
 	c.Writer = NewBufferedWriter(c.Conn)
 
-	if err := c.ProcessGreeting(); err != nil {
+	if err := c.processGreeting(); err != nil {
 		return err
 	}
+
+	c.stopChan = make(chan int)
+	c.cmdChan = make(chan Command)
+	c.respChan = make(chan *CommandResponse)
+
+	go c.main()
 
 	if c.State == ClientStateNotAuthenticated {
-		if err := c.Authenticate(); err != nil {
+		if err := c.authenticate(); err != nil {
+			c.stopChan <- 1
 			return err
 		}
 	}
 
-	if err := c.FetchCaps(); err != nil {
+	if err := c.fetchCaps(); err != nil {
+		c.stopChan <- 1
 		return err
-	}
-
-	// Main loop
-loop:
-	for {
-		resp, err := ReadResponse(c.Stream)
-		if err != nil {
-			return err
-		}
-
-		switch tresp := resp.(type) {
-		case *ResponseBye:
-			fmt.Printf("BYE   %#v\n", tresp)
-			break loop
-		default:
-			fmt.Printf("RESP  %#v\n", tresp)
-			// TODO
-		}
 	}
 
 	return nil
 }
 
-func (c *Client) ProcessGreeting() error {
+func (c *Client) main() {
+loop:
+	for {
+		select {
+		case <-c.stopChan:
+			break loop
+
+		case cmd := <-c.cmdChan:
+			resp, err := c.processCommand(cmd)
+			if err != nil {
+				// TODO
+			}
+
+			c.respChan <- resp
+		}
+	}
+
+	close(c.stopChan)
+	close(c.cmdChan)
+	close(c.respChan)
+}
+
+func (c *Client) SendCommand(cmd Command) ([]Response, *ResponseStatus, error) {
+	if c.State == ClientStateDisconnected {
+		return nil, nil, errors.New("connection down")
+	}
+
+	c.cmdChan <- cmd
+	resp := <-c.respChan
+
+	var err error
+	switch status := resp.Status.Response.(type) {
+	case *ResponseOk:
+		err = nil
+	case *ResponseNo:
+		err = errors.New(status.Text.Text)
+	case *ResponseBad:
+		err = errors.New(status.Text.Text)
+	default:
+		return nil, nil, fmt.Errorf("unknown status response type %T",
+			status)
+	}
+
+	return resp.Data, resp.Status, err
+}
+
+func (c *Client) processCommand(cmd Command) (*CommandResponse, error) {
+	cmdResp := &CommandResponse{}
+
+	sendLiteral := func(l Literal) error {
+		data := []byte(l)
+
+		fmt.Fprintf(c.Writer, "{%d}\r\n", len(data))
+		if err := c.Writer.Flush(); err != nil {
+			return err
+		}
+
+		var respErr error = nil
+
+	loop:
+		for {
+			resp, err := ReadResponse(c.Stream)
+			if err != nil {
+				return err
+			}
+
+			switch tresp := resp.(type) {
+			case *ResponseContinuation:
+				c.Writer.Append(data)
+				break loop
+
+			case *ResponseStatus:
+				cmdResp.Status = tresp
+
+				switch tresp.Response.(type) {
+				case *ResponseOk:
+					respErr = errors.New("ok response " +
+						" received while sending " +
+						"literal")
+				}
+
+				break loop
+
+			case *ResponseBye:
+				respErr = fmt.Errorf("server shutting down: %v",
+					tresp.Text.Text)
+				break loop
+
+			default:
+				cmdResp.Data = append(cmdResp.Data, resp)
+			}
+		}
+
+		return respErr
+	}
+
+	// Send a new tag
+	c.Tag++
+	fmt.Fprintf(c.Writer, "c%07d ", c.Tag)
+
+	// Send the command
+	args := cmd.Args()
+	for i, arg := range args {
+		if i > 0 {
+			c.Writer.AppendString(" ")
+		}
+
+		switch targ := arg.(type) {
+		case []byte:
+			c.Writer.Append(targ)
+
+		case string:
+			c.Writer.AppendString(targ)
+
+		case Literal:
+			if err := sendLiteral(targ); err != nil {
+				return nil, err
+			}
+
+			if cmdResp.Status != nil {
+				switch cmdResp.Status.Response.(type) {
+				case *ResponseNo:
+					return cmdResp, nil
+				case *ResponseBad:
+					return cmdResp, nil
+				}
+			}
+
+		default:
+			panic("invalid command argument")
+		}
+	}
+
+	c.Writer.AppendString("\r\n")
+
+	if err := c.Writer.Flush(); err != nil {
+		return nil, err
+	}
+
+	// Read responses until we get either the status response or a bye
+	// response
+
+	var respErr error = nil
+
+loop:
+	for {
+		resp, err := ReadResponse(c.Stream)
+		if err != nil {
+			return nil, err
+		}
+
+		switch tresp := resp.(type) {
+		case *ResponseContinuation:
+			if err := cmd.Continue(c.Writer, tresp); err != nil {
+				return nil, err
+			}
+
+			if err := c.Writer.Flush(); err != nil {
+				return nil, err
+			}
+
+		case *ResponseStatus:
+			cmdResp.Status = tresp
+			break loop
+
+		case *ResponseBye:
+			respErr = fmt.Errorf("server shutting down: %v",
+				tresp.Text.Text)
+			break loop
+
+		default:
+			cmdResp.Data = append(cmdResp.Data, resp)
+		}
+	}
+
+	return cmdResp, respErr
+}
+
+func (c *Client) processGreeting() error {
 	resp, err := ReadResponse(c.Stream)
 	if err != nil {
 		return err
@@ -179,7 +354,7 @@ func (c *Client) ProcessGreeting() error {
 	}
 
 	if hasCaps {
-		if err := c.ProcessCaps(caps); err != nil {
+		if err := c.processCaps(caps); err != nil {
 			return err
 		}
 	}
@@ -193,7 +368,7 @@ func (c *Client) ProcessGreeting() error {
 	return nil
 }
 
-func (c *Client) Authenticate() error {
+func (c *Client) authenticate() error {
 	mechanisms := []string{"CRAM-MD5", "PLAIN"}
 
 	var mechanism string
@@ -241,145 +416,7 @@ func (c *Client) Authenticate() error {
 	return nil
 }
 
-func (c *Client) SendCommand(cmd Command) ([]Response, *ResponseStatus, error) {
-	var res error
-	var dataResponses []Response
-	var statusResponse *ResponseStatus
-
-	sendLiteral := func(l Literal) error {
-		data := []byte(l)
-
-		fmt.Fprintf(c.Writer, " {%d}\r\n", len(data))
-		if err := c.Writer.Flush(); err != nil {
-			return err
-		}
-
-	loop:
-		for {
-			resp, err := ReadResponse(c.Stream)
-			if err != nil {
-				return err
-			}
-
-			switch tresp := resp.(type) {
-			case *ResponseContinuation:
-				c.Writer.Append(data)
-
-				if err := c.Writer.Flush(); err != nil {
-					return err
-				}
-
-				break loop
-
-			case *ResponseStatus:
-				statusResponse = tresp
-
-				switch status := tresp.Response.(type) {
-				case *ResponseOk:
-					return errors.New("ok response " +
-						" received while sending " +
-						"literal")
-				case *ResponseNo:
-					return errors.New(status.Text.Text)
-				case *ResponseBad:
-					return errors.New(status.Text.Text)
-				}
-
-			case *ResponseBye:
-				return fmt.Errorf("server shutting down: %v",
-					tresp.Text.Text)
-
-			default:
-				dataResponses = append(dataResponses, resp)
-			}
-		}
-
-		return nil
-	}
-
-	// Send a new tag
-	c.Tag++
-	fmt.Fprintf(c.Writer, "c%07d ", c.Tag)
-
-	// Send the command
-	args := cmd.Args()
-	for i, arg := range args {
-		if i > 0 {
-			c.Writer.AppendString(" ")
-		}
-
-		switch targ := arg.(type) {
-		case []byte:
-			c.Writer.Append(targ)
-
-		case string:
-			c.Writer.AppendString(targ)
-
-		case Literal:
-			if err := sendLiteral(targ); err != nil {
-				return nil, nil, err
-			}
-
-		default:
-			panic("invalid command argument")
-		}
-	}
-
-	c.Writer.AppendString("\r\n")
-
-	if err := c.Writer.Flush(); err != nil {
-		return nil, nil, err
-	}
-
-	// Read responses until we get either the status response or a bye
-	// response
-
-loop:
-	for {
-		resp, err := ReadResponse(c.Stream)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		switch tresp := resp.(type) {
-		case *ResponseContinuation:
-			if err := cmd.Continue(c.Writer, tresp); err != nil {
-				return nil, nil, err
-			}
-
-			if err := c.Writer.Flush(); err != nil {
-				return nil, nil, err
-			}
-
-		case *ResponseStatus:
-			statusResponse = tresp
-
-			switch status := tresp.Response.(type) {
-			case *ResponseOk:
-				res = nil
-				break loop
-			case *ResponseNo:
-				res = errors.New(status.Text.Text)
-				break loop
-			case *ResponseBad:
-				res = errors.New(status.Text.Text)
-				break loop
-			}
-
-		case *ResponseBye:
-			res = fmt.Errorf("server shutting down: %v",
-				tresp.Text.Text)
-			break loop
-
-		default:
-			dataResponses = append(dataResponses, resp)
-		}
-	}
-
-	return dataResponses, statusResponse, res
-}
-
-func (c *Client) FetchCaps() error {
+func (c *Client) fetchCaps() error {
 	cmd := &CommandCapability{}
 	resps, _, err := c.SendCommand(cmd)
 	if err != nil {
@@ -389,7 +426,7 @@ func (c *Client) FetchCaps() error {
 	for _, resp := range resps {
 		tresp, ok := resp.(*ResponseCapability)
 		if ok {
-			if err := c.ProcessCaps(tresp.Caps); err != nil {
+			if err := c.processCaps(tresp.Caps); err != nil {
 				return err
 			}
 		}
@@ -398,7 +435,7 @@ func (c *Client) FetchCaps() error {
 	return nil
 }
 
-func (c *Client) ProcessCaps(caps []string) error {
+func (c *Client) processCaps(caps []string) error {
 	c.Caps = make(map[string]bool)
 
 	for _, cap := range caps {
