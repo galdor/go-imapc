@@ -271,12 +271,6 @@ loop:
 		data = append(data, c)
 	}
 
-	if found, err := s.SkipByte('"'); err != nil {
-		return nil, err
-	} else if !found {
-		return nil, fmt.Errorf("missing last '\"' for quoted string")
-	}
-
 	return data, nil
 }
 
