@@ -69,7 +69,7 @@ func CmdConnect(client *imapc.Client, args []string) {
 }
 
 func CmdListMailboxes(client *imapc.Client, args []string) {
-	resps, err := client.ListMailboxes("", "*")
+	resps, err := client.SendCommandList("", "*")
 	if err != nil {
 		Die("%v", err)
 	}

@@ -160,30 +160,6 @@ loop:
 	close(c.respChan)
 }
 
-func (c *Client) SendCommand(cmd Command) ([]Response, *ResponseStatus, error) {
-	if c.State == ClientStateDisconnected {
-		return nil, nil, errors.New("connection down")
-	}
-
-	c.cmdChan <- cmd
-	resp := <-c.respChan
-
-	var err error = nil
-
-	if resp.Error != nil {
-		err = resp.Error
-	} else if resp.Status != nil {
-		switch status := resp.Status.Response.(type) {
-		case *ResponseNo:
-			err = errors.New(status.Text.Text)
-		case *ResponseBad:
-			err = errors.New(status.Text.Text)
-		}
-	}
-
-	return resp.Data, resp.Status, err
-}
-
 func (c *Client) processCommand(cmd Command) *CommandResponse {
 	cmdResp := &CommandResponse{}
 
@@ -454,7 +430,31 @@ func (c *Client) HasCap(cap string) bool {
 	return found
 }
 
-func (c *Client) ListMailboxes(ref, pattern string) ([]*ResponseList, error) {
+func (c *Client) SendCommand(cmd Command) ([]Response, *ResponseStatus, error) {
+	if c.State == ClientStateDisconnected {
+		return nil, nil, errors.New("connection down")
+	}
+
+	c.cmdChan <- cmd
+	resp := <-c.respChan
+
+	var err error = nil
+
+	if resp.Error != nil {
+		err = resp.Error
+	} else if resp.Status != nil {
+		switch status := resp.Status.Response.(type) {
+		case *ResponseNo:
+			err = errors.New(status.Text.Text)
+		case *ResponseBad:
+			err = errors.New(status.Text.Text)
+		}
+	}
+
+	return resp.Data, resp.Status, err
+}
+
+func (c *Client) SendCommandList(ref, pattern string) ([]*ResponseList, error) {
 	cmd := &CommandList{
 		Ref:     ref,
 		Pattern: pattern,
