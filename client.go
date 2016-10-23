@@ -454,9 +454,10 @@ func (c *Client) HasCap(cap string) bool {
 	return found
 }
 
-func (c *Client) ListMailboxes() ([]*ResponseList, error) {
+func (c *Client) ListMailboxes(ref, pattern string) ([]*ResponseList, error) {
 	cmd := &CommandList{
-		Pattern: "*",
+		Ref:     ref,
+		Pattern: pattern,
 	}
 	resps, _, err := c.SendCommand(cmd)
 	if err != nil {

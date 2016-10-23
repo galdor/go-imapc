@@ -31,6 +31,7 @@ func main() {
 	cmdline.AddOption("p", "password", "password", "set the password")
 
 	cmdline.AddCommand("connect", "connect to a server")
+	cmdline.AddCommand("list-mailboxes", "list all mailboxes")
 
 	cmdline.Parse(os.Args)
 
@@ -46,6 +47,8 @@ func main() {
 	switch cmd {
 	case "connect":
 		cmdFn = CmdConnect
+	case "list-mailboxes":
+		cmdFn = CmdListMailboxes
 	default:
 		Die("unknown command")
 	}
@@ -63,6 +66,30 @@ func main() {
 }
 
 func CmdConnect(client *imapc.Client, args []string) {
+}
+
+func CmdListMailboxes(client *imapc.Client, args []string) {
+	resps, err := client.ListMailboxes("", "*")
+	if err != nil {
+		Die("%v", err)
+	}
+
+	width := 0
+	for _, resp := range resps {
+		if len(resp.MailboxName) > width {
+			width = len(resp.MailboxName)
+		}
+	}
+
+	for _, resp := range resps {
+		fmt.Printf("%-*s ", width, resp.MailboxName)
+
+		for _, flag := range resp.MailboxFlags {
+			fmt.Printf(" \\%s", flag)
+		}
+
+		fmt.Printf("\n")
+	}
 }
 
 func Error(format string, args ...interface{}) {
