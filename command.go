@@ -31,6 +31,7 @@ type Command interface {
 type CommandResponse struct {
 	Data   []Response
 	Status *ResponseStatus
+	Error  error
 }
 
 type Literal []byte

@@ -151,12 +151,7 @@ loop:
 			break loop
 
 		case cmd := <-c.cmdChan:
-			resp, err := c.processCommand(cmd)
-			if err != nil {
-				// TODO
-			}
-
-			c.respChan <- resp
+			c.respChan <- c.processCommand(cmd)
 		}
 	}
 
@@ -173,23 +168,23 @@ func (c *Client) SendCommand(cmd Command) ([]Response, *ResponseStatus, error) {
 	c.cmdChan <- cmd
 	resp := <-c.respChan
 
-	var err error
-	switch status := resp.Status.Response.(type) {
-	case *ResponseOk:
-		err = nil
-	case *ResponseNo:
-		err = errors.New(status.Text.Text)
-	case *ResponseBad:
-		err = errors.New(status.Text.Text)
-	default:
-		return nil, nil, fmt.Errorf("unknown status response type %T",
-			status)
+	var err error = nil
+
+	if resp.Error != nil {
+		err = resp.Error
+	} else if resp.Status != nil {
+		switch status := resp.Status.Response.(type) {
+		case *ResponseNo:
+			err = errors.New(status.Text.Text)
+		case *ResponseBad:
+			err = errors.New(status.Text.Text)
+		}
 	}
 
 	return resp.Data, resp.Status, err
 }
 
-func (c *Client) processCommand(cmd Command) (*CommandResponse, error) {
+func (c *Client) processCommand(cmd Command) *CommandResponse {
 	cmdResp := &CommandResponse{}
 
 	sendLiteral := func(l Literal) error {
@@ -259,15 +254,18 @@ func (c *Client) processCommand(cmd Command) (*CommandResponse, error) {
 
 		case Literal:
 			if err := sendLiteral(targ); err != nil {
-				return nil, err
+				cmdResp.Error = err
+				return cmdResp
 			}
 
+			// Do not send the rest of the command if the server
+			// sent a NO or BAD status response.
 			if cmdResp.Status != nil {
 				switch cmdResp.Status.Response.(type) {
 				case *ResponseNo:
-					return cmdResp, nil
+					return cmdResp
 				case *ResponseBad:
-					return cmdResp, nil
+					return cmdResp
 				}
 			}
 
@@ -279,29 +277,31 @@ func (c *Client) processCommand(cmd Command) (*CommandResponse, error) {
 	c.Writer.AppendString("\r\n")
 
 	if err := c.Writer.Flush(); err != nil {
-		return nil, err
+		cmdResp.Error = err
+		return cmdResp
 	}
 
 	// Read responses until we get either the status response or a bye
 	// response
 
-	var respErr error = nil
-
 loop:
 	for {
 		resp, err := ReadResponse(c.Stream)
 		if err != nil {
-			return nil, err
+			cmdResp.Error = err
+			return cmdResp
 		}
 
 		switch tresp := resp.(type) {
 		case *ResponseContinuation:
 			if err := cmd.Continue(c.Writer, tresp); err != nil {
-				return nil, err
+				cmdResp.Error = err
+				return cmdResp
 			}
 
 			if err := c.Writer.Flush(); err != nil {
-				return nil, err
+				cmdResp.Error = err
+				return cmdResp
 			}
 
 		case *ResponseStatus:
@@ -309,7 +309,7 @@ loop:
 			break loop
 
 		case *ResponseBye:
-			respErr = fmt.Errorf("server shutting down: %v",
+			cmdResp.Error = fmt.Errorf("server shutting down: %v",
 				tresp.Text.Text)
 			break loop
 
@@ -318,7 +318,7 @@ loop:
 		}
 	}
 
-	return cmdResp, respErr
+	return cmdResp
 }
 
 func (c *Client) processGreeting() error {
