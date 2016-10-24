@@ -18,10 +18,12 @@ package imapc
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 )
 
 type Response interface {
 	Name() string
+	fmt.GoStringer
 	Read(*Stream) error
 }
 
@@ -112,6 +114,10 @@ type ResponseStatus struct {
 
 func (r *ResponseStatus) Name() string { return r.ResponseName }
 
+func (r *ResponseStatus) GoString() string {
+	return fmt.Sprintf("#<response-status %#v>", r.Response)
+}
+
 func (r *ResponseStatus) Read(s *Stream) error {
 	return r.Response.Read(s)
 }
@@ -122,6 +128,10 @@ type ResponseOk struct {
 }
 
 func (r *ResponseOk) Name() string { return "OK" }
+
+func (r *ResponseOk) GoString() string {
+	return fmt.Sprintf("#<response-ok %#v>", r.Text)
+}
 
 func (r *ResponseOk) Read(s *Stream) error {
 	r.Text = &ResponseText{}
@@ -135,6 +145,10 @@ type ResponseNo struct {
 
 func (r *ResponseNo) Name() string { return "NO" }
 
+func (r *ResponseNo) GoString() string {
+	return fmt.Sprintf("#<response-no %#v>", r.Text)
+}
+
 func (r *ResponseNo) Read(s *Stream) error {
 	r.Text = &ResponseText{}
 	return r.Text.Read(s)
@@ -146,6 +160,10 @@ type ResponseBad struct {
 }
 
 func (r *ResponseBad) Name() string { return "BAD" }
+
+func (r *ResponseBad) GoString() string {
+	return fmt.Sprintf("#<response-bad %#v>", r.Text)
+}
 
 func (r *ResponseBad) Read(s *Stream) error {
 	r.Text = &ResponseText{}
@@ -161,26 +179,54 @@ func ReadResponseData(s *Stream) (Response, error) {
 		return nil, err
 	}
 
-	// Read the response name
-	name, err := s.ReadUntilByteAndSkip(' ')
+	// Read either the response tag or a number
+	data, err := s.ReadUntilByteAndSkip(' ')
 	if err != nil {
 		return nil, err
 	}
 
 	var r Response
-	switch string(name) {
-	case "OK":
-		r = &ResponseOk{}
-	case "PREAUTH":
-		r = &ResponsePreAuth{}
-	case "BYE":
-		r = &ResponseBye{}
-	case "CAPABILITY":
-		r = &ResponseCapability{}
-	case "LIST":
-		r = &ResponseList{}
-	default:
-		return nil, fmt.Errorf("unknown response %q", name)
+
+	if ByteStringAll(data, IsDigitChar) {
+		n, err := strconv.ParseUint(string(data), 10, 32)
+		if err != nil {
+			return nil, err
+		}
+		count := uint32(n)
+
+		rest, err := s.ReadUntil([]byte("\r\n"))
+		if err != nil {
+			return nil, err
+		}
+		tag := string(rest)
+
+		switch tag {
+		case "EXISTS":
+			r = &ResponseExists{Count: count}
+		case "RECENT":
+			r = &ResponseRecent{Count: count}
+		default:
+			return nil, fmt.Errorf("unknown response %q", tag)
+		}
+	} else {
+		tag := string(data)
+
+		switch tag {
+		case "OK":
+			r = &ResponseOk{}
+		case "PREAUTH":
+			r = &ResponsePreAuth{}
+		case "BYE":
+			r = &ResponseBye{}
+		case "CAPABILITY":
+			r = &ResponseCapability{}
+		case "LIST":
+			r = &ResponseList{}
+		case "FLAGS":
+			r = &ResponseFlags{}
+		default:
+			return nil, fmt.Errorf("unknown response %q", tag)
+		}
 	}
 
 	return r, nil
@@ -192,6 +238,10 @@ type ResponsePreAuth struct {
 }
 
 func (r *ResponsePreAuth) Name() string { return "PREAUTH" }
+
+func (r *ResponsePreAuth) GoString() string {
+	return fmt.Sprintf("#<response-pre-auth %#v>", r.Text)
+}
 
 func (r *ResponsePreAuth) Read(s *Stream) error {
 	r.Text = &ResponseText{}
@@ -205,6 +255,10 @@ type ResponseBye struct {
 
 func (r *ResponseBye) Name() string { return "BYE" }
 
+func (r *ResponseBye) GoString() string {
+	return fmt.Sprintf("#<response-bye %#v>", r.Text)
+}
+
 func (r *ResponseBye) Read(s *Stream) error {
 	r.Text = &ResponseText{}
 	return r.Text.Read(s)
@@ -216,6 +270,10 @@ type ResponseCapability struct {
 }
 
 func (r *ResponseCapability) Name() string { return "CAPABILITY" }
+
+func (r *ResponseCapability) GoString() string {
+	return fmt.Sprintf("#<response-capability %v>", r.Caps)
+}
 
 func (r *ResponseCapability) Read(s *Stream) error {
 	data, err := s.ReadUntilAndSkip([]byte("\r\n"))
@@ -242,29 +300,18 @@ type ResponseList struct {
 
 func (r *ResponseList) Name() string { return "LIST" }
 
+func (r *ResponseList) GoString() string {
+	return fmt.Sprintf("#<response-list %q %v>",
+		r.MailboxName, r.MailboxFlags)
+}
+
 func (r *ResponseList) Read(s *Stream) error {
 	// Mailbox flags
-	if found, err := s.SkipByte('('); err != nil {
-		return err
-	} else if !found {
-		return fmt.Errorf("missing '(' for mailbox flags")
-	}
-
-	flagData, err := s.ReadUntilByteAndSkip(')')
+	flags, err := s.ReadIMAPFlagList()
 	if err != nil {
 		return err
 	}
-
-	parts := bytes.Split(flagData, []byte{' '})
-	r.MailboxFlags = make([]string, len(parts))
-	for i, part := range parts {
-		if part[0] != '\\' {
-			return fmt.Errorf("invalid mailbox flag %q",
-				string(part))
-		}
-
-		r.MailboxFlags[i] = string(part[1:])
-	}
+	r.MailboxFlags = flags
 
 	if found, err := s.SkipByte(' '); err != nil {
 		return err
@@ -323,6 +370,80 @@ func (r *ResponseList) Read(s *Stream) error {
 	return nil
 }
 
+// FLAGS
+type ResponseFlags struct {
+	Flags []string
+}
+
+func (r *ResponseFlags) Name() string { return "FLAGS" }
+
+func (r *ResponseFlags) GoString() string {
+	return fmt.Sprintf("#<response-flags %v>", r.Flags)
+}
+
+func (r *ResponseFlags) Read(s *Stream) error {
+	// Flags
+	flags, err := s.ReadIMAPFlagList()
+	if err != nil {
+		return err
+	}
+
+	r.Flags = flags
+
+	// End
+	if ok, err := s.SkipBytes([]byte("\r\n")); err != nil {
+		return err
+	} else if !ok {
+		return fmt.Errorf("invalid character after flag list")
+	}
+
+	return nil
+}
+
+// EXISTS
+type ResponseExists struct {
+	Count uint32
+}
+
+func (r *ResponseExists) Name() string { return "EXISTS" }
+
+func (r *ResponseExists) GoString() string {
+	return fmt.Sprintf("#<response-exists %d>", r.Count)
+}
+
+func (r *ResponseExists) Read(s *Stream) error {
+	// End
+	if ok, err := s.SkipBytes([]byte("\r\n")); err != nil {
+		return err
+	} else if !ok {
+		return fmt.Errorf("invalid character after EXISTS")
+	}
+
+	return nil
+}
+
+// RECENT
+type ResponseRecent struct {
+	Count uint32
+}
+
+func (r *ResponseRecent) Name() string { return "RECENT" }
+
+func (r *ResponseRecent) GoString() string {
+	return fmt.Sprintf("#<response-recent %d>", r.Count)
+}
+
+func (r *ResponseRecent) Read(s *Stream) error {
+	// End
+	if ok, err := s.SkipBytes([]byte("\r\n")); err != nil {
+		return err
+	} else if !ok {
+		return fmt.Errorf("invalid character after RECENT")
+	}
+
+	return nil
+}
+
 // ---------------------------------------------------------------------------
 //  Command continuation responses
 // ---------------------------------------------------------------------------
@@ -340,6 +461,10 @@ type ResponseContinuation struct {
 }
 
 func (r *ResponseContinuation) Name() string { return "" }
+
+func (r *ResponseContinuation) GoString() string {
+	return fmt.Sprintf("#<response-continuation %q>", r.Text)
+}
 
 func (r *ResponseContinuation) Read(s *Stream) error {
 	text, err := s.ReadUntilAndSkip([]byte("\r\n"))
@@ -375,31 +500,57 @@ func (r *ResponseText) Read(s *Stream) error {
 		}
 		r.CodeString = string(codeBytes)
 
+		var codeData []byte
+
 		idx := bytes.IndexByte(codeBytes, ' ')
 		if idx == -1 {
 			r.Code = string(codeBytes)
+			codeData = []byte{}
 		} else {
 			r.Code = string(codeBytes[0:idx])
+			codeData = codeBytes[idx+1:]
 		}
 
 		switch r.Code {
-		case "BADCHARSET":
-			// TODO
-		case "PERMANENTFLAGS":
-			// TODO
-		case "UIDNEXT":
-			// TODO
-		case "UIDVALIDITY":
-			// TODO
-		case "UNSEEN":
-			// TODO
 		case "CAPABILITY":
-			parts := bytes.Split(codeBytes, []byte{' '})
+			parts := bytes.Split(codeData, []byte{' '})
 			caps := make([]string, len(parts))
 			for i, cap := range parts {
 				caps[i] = string(cap)
 			}
 			r.CodeData = caps
+
+		case "HIGHESTMODSEQ":
+			fallthrough
+		case "UIDNEXT":
+			fallthrough
+		case "UIDVALIDITY":
+			fallthrough
+		case "UNSEEN":
+			n, err := strconv.ParseUint(string(codeData), 10, 32)
+			if err != nil {
+				return fmt.Errorf("invalid %s data: %v",
+					r.Code, err)
+			}
+			if n == 0 {
+				return fmt.Errorf("invalid zero value for %s",
+					r.Code)
+			}
+			r.CodeData = n
+
+		case "PERMANENTFLAGS":
+			if len(codeData) < 2 ||
+				codeData[0] != '(' || codeData[1] != ')' {
+				return fmt.Errorf("invalid %q data", r.Code)
+			}
+
+			parts := bytes.Split(codeData[1:len(codeData)-1],
+				[]byte{' '})
+			flags := make([]string, len(parts))
+			for i, flag := range parts {
+				flags[i] = string(flag)
+			}
+			r.CodeData = flags
 		}
 	}
 
@@ -411,4 +562,13 @@ func (r *ResponseText) Read(s *Stream) error {
 
 	r.Text = string(text)
 	return nil
+}
+
+func (r *ResponseText) GoString() string {
+	if r.Code == "" {
+		return fmt.Sprintf("#<response-text %q>", r.Text)
+	} else {
+		return fmt.Sprintf("#<response-text %s %v %q>",
+			r.Code, r.CodeData, r.Text)
+	}
 }

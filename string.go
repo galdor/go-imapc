@@ -15,12 +15,16 @@
 
 package imapc
 
-func QuoteString(str string) string {
+func QuoteString(str string) []byte {
+	return QuoteByteString([]byte(str))
+}
+
+func QuoteByteString(str []byte) []byte {
 	qstr := make([]byte, len(str)+2)
 
 	qstr[0] = '"'
 	i := 1
-	for _, b := range []byte(str) {
+	for _, b := range str {
 		if b == '"' || b == '\\' {
 			qstr = append(qstr, 0)
 			qstr[i] = '\\'
@@ -32,5 +36,15 @@ func QuoteString(str string) string {
 	}
 	qstr[i] = '"'
 
-	return string(qstr)
+	return qstr
+}
+
+func ByteStringAll(str []byte, fn func(byte) bool) bool {
+	for _, b := range str {
+		if !fn(b) {
+			return false
+		}
+	}
+
+	return true
 }

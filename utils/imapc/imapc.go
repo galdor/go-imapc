@@ -31,7 +31,8 @@ func main() {
 	cmdline.AddOption("p", "password", "password", "set the password")
 
 	cmdline.AddCommand("connect", "connect to a server")
-	cmdline.AddCommand("list-mailboxes", "list all mailboxes")
+	cmdline.AddCommand("list", "list mailboxes")
+	cmdline.AddCommand("examine", "examine a mailbox")
 
 	cmdline.Parse(os.Args)
 
@@ -47,8 +48,10 @@ func main() {
 	switch cmd {
 	case "connect":
 		cmdFn = CmdConnect
-	case "list-mailboxes":
-		cmdFn = CmdListMailboxes
+	case "list":
+		cmdFn = CmdList
+	case "examine":
+		cmdFn = CmdExamine
 	default:
 		Die("unknown command")
 	}
@@ -62,13 +65,13 @@ func main() {
 		Die("%v", err)
 	}
 
-	cmdFn(client, cmdArgs)
+	cmdFn(client, append([]string{cmd}, cmdArgs...))
 }
 
 func CmdConnect(client *imapc.Client, args []string) {
 }
 
-func CmdListMailboxes(client *imapc.Client, args []string) {
+func CmdList(client *imapc.Client, args []string) {
 	resps, err := client.SendCommandList("", "*")
 	if err != nil {
 		Die("%v", err)
@@ -90,6 +93,21 @@ func CmdListMailboxes(client *imapc.Client, args []string) {
 
 		fmt.Printf("\n")
 	}
+}
+
+func CmdExamine(client *imapc.Client, args []string) {
+	cmdline := cmdline.New()
+	cmdline.AddArgument("mailbox", "the name of the mailbox")
+	cmdline.Parse(args)
+
+	mailboxName := cmdline.ArgumentValue("mailbox")
+
+	err := client.SendCommandExamine(mailboxName)
+	if err != nil {
+		Die("%v", err)
+	}
+
+	// TODO
 }
 
 func Error(format string, args ...interface{}) {

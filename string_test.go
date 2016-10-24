@@ -16,6 +16,7 @@
 package imapc
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -35,7 +36,7 @@ func TestQuoteString(t *testing.T) {
 
 	for _, test := range tests {
 		qstr := QuoteString(test.str)
-		if qstr != test.qstr {
+		if !bytes.Equal(qstr, []byte(test.qstr)) {
 			t.Errorf("%s was quoted as %s instead of %s",
 				test.str, qstr, test.qstr)
 		}

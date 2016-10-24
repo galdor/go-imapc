@@ -471,3 +471,21 @@ func (c *Client) SendCommandList(ref, pattern string) ([]*ResponseList, error) {
 
 	return mailboxes, nil
 }
+
+func (c *Client) SendCommandExamine(mailboxName string) error {
+	cmd := &CommandExamine{
+		MailboxName: mailboxName,
+	}
+	resps, status, err := c.SendCommand(cmd)
+	if err != nil {
+		return err
+	}
+
+	// TODO
+	for _, resp := range resps {
+		fmt.Printf("%#v\n", resp)
+	}
+	fmt.Printf("%#v\n", status)
+
+	return nil
+}

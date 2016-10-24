@@ -312,6 +312,47 @@ func (s *Stream) ReadIMAPLiteralString() ([]byte, error) {
 	return data, nil
 }
 
+func (s *Stream) ReadIMAPFlagList() ([]string, error) {
+	if found, err := s.SkipByte('('); err != nil {
+		return nil, err
+	} else if !found {
+		return nil, fmt.Errorf("missing '(' for flag list")
+	}
+
+	flagData, err := s.ReadUntilByteAndSkip(')')
+	if err != nil {
+		return nil, err
+	}
+
+	parts := bytes.Split(flagData, []byte{' '})
+	flags := make([]string, len(parts))
+
+	for i, part := range parts {
+		if part[0] != '\\' {
+			return nil, fmt.Errorf("invalid mailbox flag %q",
+				string(part))
+		}
+
+		flags[i] = string(part[1:])
+	}
+
+	return flags, nil
+}
+
+func (s *Stream) ReadIMAPNumber() (uint32, error) {
+	data, err := s.ReadWhile(IsDigitChar)
+	if err != nil {
+		return 0, err
+	}
+
+	n, err := strconv.ParseUint(string(data), 10, 32)
+	if err != nil {
+		return 0, err
+	}
+
+	return uint32(n), err
+}
+
 func dupBytes(data []byte) []byte {
 	ndata := make([]byte, len(data))
 	copy(ndata, data)

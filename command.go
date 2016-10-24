@@ -117,13 +117,29 @@ type CommandList struct {
 }
 
 func (c *CommandList) Args() []interface{} {
-	// TODO modified utf7 encoding
-	ref := QuoteString(c.Ref)
-	pattern := QuoteString(c.Pattern)
+	ref := QuotedStringEncode(c.Ref)
+	pattern := QuotedStringEncode(c.Pattern)
 
 	return []interface{}{"LIST", ref, pattern}
 }
 
 func (c *CommandList) Continue(w *BufferedWriter, r *ResponseContinuation) error {
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+//  Command: EXAMINE
+// ---------------------------------------------------------------------------
+type CommandExamine struct {
+	MailboxName string
+}
+
+func (c *CommandExamine) Args() []interface{} {
+	mailboxName := QuotedStringEncode(c.MailboxName)
+
+	return []interface{}{"EXAMINE", mailboxName}
+}
+
+func (c *CommandExamine) Continue(w *BufferedWriter, r *ResponseContinuation) error {
 	return nil
 }

@@ -15,6 +15,10 @@
 
 package imapc
 
+func QuotedStringEncode(s string) []byte {
+	return QuoteByteString(ModifiedUTF7Encode([]byte(s)))
+}
+
 func IsAstringChar(b byte) bool {
 	return IsAtomChar(b) || IsRespSpecialChar(b)
 }
@@ -47,4 +51,8 @@ func IsChar(b byte) bool {
 
 func IsCtlChar(b byte) bool {
 	return b < 32 || b == 127
+}
+
+func IsDigitChar(b byte) bool {
+	return b >= '0' && b <= '9'
 }
