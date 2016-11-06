@@ -454,38 +454,44 @@ func (c *Client) SendCommand(cmd Command) ([]Response, *ResponseStatus, error) {
 	return resp.Data, resp.Status, err
 }
 
-func (c *Client) SendCommandList(ref, pattern string) ([]*ResponseList, error) {
-	cmd := &CommandList{
-		Ref:     ref,
-		Pattern: pattern,
-	}
-	resps, _, err := c.SendCommand(cmd)
-	if err != nil {
-		return nil, err
-	}
-
-	mailboxes := []*ResponseList{}
-	for _, resp := range resps {
-		mailboxes = append(mailboxes, resp.(*ResponseList))
-	}
-
-	return mailboxes, nil
-}
-
-func (c *Client) SendCommandExamine(mailboxName string) error {
-	cmd := &CommandExamine{
-		MailboxName: mailboxName,
-	}
+func (c *Client) SendCommandWithResponseSet(cmd Command, rs ResponseSet) error {
 	resps, status, err := c.SendCommand(cmd)
 	if err != nil {
 		return err
 	}
 
-	// TODO
-	for _, resp := range resps {
-		fmt.Printf("%#v\n", resp)
+	if err := rs.Init(resps, status); err != nil {
+		return err
 	}
-	fmt.Printf("%#v\n", status)
 
 	return nil
+}
+
+func (c *Client) SendCommandList(ref, pattern string) (*ResponseSetList, error) {
+	cmd := &CommandList{
+		Ref:     ref,
+		Pattern: pattern,
+	}
+
+	rs := &ResponseSetList{}
+
+	if err := c.SendCommandWithResponseSet(cmd, rs); err != nil {
+		return nil, err
+	}
+
+	return rs, nil
+}
+
+func (c *Client) SendCommandExamine(mailboxName string) (*ResponseSetExamine, error) {
+	cmd := &CommandExamine{
+		MailboxName: mailboxName,
+	}
+
+	rs := &ResponseSetExamine{}
+
+	if err := c.SendCommandWithResponseSet(cmd, rs); err != nil {
+		return nil, err
+	}
+
+	return rs, nil
 }

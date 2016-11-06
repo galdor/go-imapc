@@ -72,22 +72,22 @@ func CmdConnect(client *imapc.Client, args []string) {
 }
 
 func CmdList(client *imapc.Client, args []string) {
-	resps, err := client.SendCommandList("", "*")
+	rs, err := client.SendCommandList("", "*")
 	if err != nil {
 		Die("%v", err)
 	}
 
 	width := 0
-	for _, resp := range resps {
-		if len(resp.MailboxName) > width {
-			width = len(resp.MailboxName)
+	for _, mbox := range rs.Mailboxes {
+		if len(mbox.Name) > width {
+			width = len(mbox.Name)
 		}
 	}
 
-	for _, resp := range resps {
-		fmt.Printf("%-*s ", width, resp.MailboxName)
+	for _, mbox := range rs.Mailboxes {
+		fmt.Printf("%-*s ", width, mbox.Name)
 
-		for _, flag := range resp.MailboxFlags {
+		for _, flag := range mbox.Flags {
 			fmt.Printf(" \\%s", flag)
 		}
 
@@ -102,12 +102,26 @@ func CmdExamine(client *imapc.Client, args []string) {
 
 	mailboxName := cmdline.ArgumentValue("mailbox")
 
-	err := client.SendCommandExamine(mailboxName)
+	rs, err := client.SendCommandExamine(mailboxName)
 	if err != nil {
 		Die("%v", err)
 	}
 
-	// TODO
+	fmt.Printf("Flags           ")
+	for _, flag := range rs.Flags {
+		fmt.Printf(" \\%s", flag)
+	}
+	fmt.Printf("\n")
+
+	fmt.Printf("Permanent flags ")
+	for _, flag := range rs.PermanentFlags {
+		fmt.Printf(" \\%s", flag)
+	}
+	fmt.Printf("\n")
+
+	fmt.Printf("Messages         %d\n", rs.Exists)
+	fmt.Printf("Unseen messages  %d\n", rs.Unseen)
+	fmt.Printf("Recent messages  %d\n", rs.Recent)
 }
 
 func Error(format string, args ...interface{}) {

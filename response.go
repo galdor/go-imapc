@@ -118,6 +118,11 @@ func (r *ResponseStatus) GoString() string {
 	return fmt.Sprintf("#<response-status %#v>", r.Response)
 }
 
+func (r *ResponseStatus) IsOk() bool {
+	_, ok := r.Response.(*ResponseOk)
+	return ok
+}
+
 func (r *ResponseStatus) Read(s *Stream) error {
 	return r.Response.Read(s)
 }
@@ -536,7 +541,7 @@ func (r *ResponseText) Read(s *Stream) error {
 				return fmt.Errorf("invalid zero value for %s",
 					r.Code)
 			}
-			r.CodeData = n
+			r.CodeData = uint32(n)
 
 		case "PERMANENTFLAGS":
 			if len(codeData) < 2 ||
@@ -544,13 +549,17 @@ func (r *ResponseText) Read(s *Stream) error {
 				return fmt.Errorf("invalid %q data", r.Code)
 			}
 
-			parts := bytes.Split(codeData[1:len(codeData)-1],
-				[]byte{' '})
-			flags := make([]string, len(parts))
-			for i, flag := range parts {
-				flags[i] = string(flag)
+			codeData = codeData[1 : len(codeData)-1]
+			if len(codeData) == 0 {
+				r.CodeData = []string{}
+			} else {
+				parts := bytes.Split(codeData, []byte{' '})
+				flags := make([]string, len(parts))
+				for i, flag := range parts {
+					flags[i] = string(flag)
+				}
+				r.CodeData = flags
 			}
-			r.CodeData = flags
 		}
 	}
 
