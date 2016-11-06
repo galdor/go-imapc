@@ -41,8 +41,9 @@ func (s *Stream) Peek(n int) ([]byte, error) {
 		rest := n - blen
 		s.Buf = append(s.Buf, make([]byte, rest)...)
 
-		_, err := io.ReadAtLeast(s.Reader, s.Buf[blen:], rest)
+		nbRead, err := io.ReadAtLeast(s.Reader, s.Buf[blen:], rest)
 		if err != nil {
+			s.Buf = s.Buf[0 : blen+nbRead]
 			return nil, err
 		}
 	}
@@ -51,12 +52,16 @@ func (s *Stream) Peek(n int) ([]byte, error) {
 }
 
 func (s *Stream) PeekUpTo(n int) ([]byte, error) {
-	data, err := s.Peek(n)
-	if err != nil && err != io.ErrUnexpectedEOF {
+	_, err := s.Peek(n)
+	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
 		return nil, err
 	}
 
-	return data, nil
+	if n >= len(s.Buf) {
+		n = len(s.Buf)
+	}
+
+	return dupBytes(s.Buf[0:n]), nil
 }
 
 func (s *Stream) StartsWithBytes(bs []byte) (bool, error) {
@@ -125,23 +130,20 @@ loop:
 		block, err := s.PeekUpTo(blockSize)
 		if err != nil {
 			return nil, err
+		} else if len(block) == 0 {
+			break loop
 		}
 
 		for i, b := range block {
 			if !fn(b) {
-				if err := s.Skip(i); err != nil {
-					return nil, err
-				}
-
+				s.Buf = s.Buf[i:]
 				break loop
 			}
 
 			data = append(data, b)
 		}
 
-		if err := s.Skip(blockSize); err != nil {
-			return nil, err
-		}
+		s.Buf = s.Buf[len(block):]
 	}
 
 	return data, nil
@@ -319,12 +321,16 @@ func (s *Stream) ReadIMAPFlagList() ([]string, error) {
 		return nil, fmt.Errorf("missing '(' for flag list")
 	}
 
-	flagData, err := s.ReadUntilByteAndSkip(')')
+	flagsData, err := s.ReadUntilByteAndSkip(')')
 	if err != nil {
 		return nil, err
 	}
 
-	parts := bytes.Split(flagData, []byte{' '})
+	if len(flagsData) == 0 {
+		return []string{}, nil
+	}
+
+	parts := bytes.Split(flagsData, []byte{' '})
 	flags := make([]string, len(parts))
 
 	for i, part := range parts {
