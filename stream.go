@@ -35,6 +35,23 @@ func NewStream(r io.Reader) *Stream {
 	}
 }
 
+func (s *Stream) IsEmpty() (bool, error) {
+	if len(s.Buf) > 0 {
+		return false, nil
+	}
+
+	_, err := s.Peek(1)
+	if err != nil {
+		if err == io.EOF || err == io.ErrUnexpectedEOF {
+			return true, nil
+		}
+
+		return false, err
+	}
+
+	return false, nil
+}
+
 func (s *Stream) Peek(n int) ([]byte, error) {
 	if len(s.Buf) < n {
 		blen := len(s.Buf)
@@ -118,6 +135,30 @@ func (s *Stream) Read(n int) ([]byte, error) {
 
 	s.Buf = s.Buf[n:]
 	return data, nil
+}
+
+func (s *Stream) ReadAll() ([]byte, error) {
+	buf := bytes.NewBuffer([]byte{})
+
+loop:
+	for {
+		data, err := s.PeekUpTo(4096)
+		if err != nil {
+			return nil, err
+		}
+
+		buf.Write(data)
+		s.Buf = s.Buf[len(data):]
+
+		empty, err := s.IsEmpty()
+		if err != nil {
+			return nil, err
+		} else if empty {
+			break loop
+		}
+	}
+
+	return buf.Bytes(), nil
 }
 
 func (s *Stream) ReadWhile(fn func(byte) bool) ([]byte, error) {

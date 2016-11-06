@@ -516,50 +516,8 @@ func (r *ResponseText) Read(s *Stream) error {
 			codeData = codeBytes[idx+1:]
 		}
 
-		switch r.Code {
-		case "CAPABILITY":
-			parts := bytes.Split(codeData, []byte{' '})
-			caps := make([]string, len(parts))
-			for i, cap := range parts {
-				caps[i] = string(cap)
-			}
-			r.CodeData = caps
-
-		case "HIGHESTMODSEQ":
-			fallthrough
-		case "UIDNEXT":
-			fallthrough
-		case "UIDVALIDITY":
-			fallthrough
-		case "UNSEEN":
-			n, err := strconv.ParseUint(string(codeData), 10, 32)
-			if err != nil {
-				return fmt.Errorf("invalid %s data: %v",
-					r.Code, err)
-			}
-			if n == 0 {
-				return fmt.Errorf("invalid zero value for %s",
-					r.Code)
-			}
-			r.CodeData = uint32(n)
-
-		case "PERMANENTFLAGS":
-			if len(codeData) < 2 ||
-				codeData[0] != '(' || codeData[1] != ')' {
-				return fmt.Errorf("invalid %q data", r.Code)
-			}
-
-			codeData = codeData[1 : len(codeData)-1]
-			if len(codeData) == 0 {
-				r.CodeData = []string{}
-			} else {
-				parts := bytes.Split(codeData, []byte{' '})
-				flags := make([]string, len(parts))
-				for i, flag := range parts {
-					flags[i] = string(flag)
-				}
-				r.CodeData = flags
-			}
+		if err := r.ReadCodeData(codeData); err != nil {
+			return fmt.Errorf("invalid %s data: %v", r.Code, err)
 		}
 	}
 
@@ -570,6 +528,67 @@ func (r *ResponseText) Read(s *Stream) error {
 	}
 
 	r.Text = string(text)
+	return nil
+}
+
+func (r *ResponseText) ReadCodeData(data []byte) error {
+	s := NewStream(bytes.NewReader(data))
+
+	switch r.Code {
+	case "CAPABILITY":
+		capsData, err := s.ReadAll()
+		if err != nil {
+			return err
+		}
+
+		parts := bytes.Split(capsData, []byte{' '})
+		caps := make([]string, len(parts))
+		for i, cap := range parts {
+			caps[i] = string(cap)
+		}
+
+		r.CodeData = caps
+
+	case "HIGHESTMODSEQ":
+		fallthrough
+	case "UIDNEXT":
+		fallthrough
+	case "UIDVALIDITY":
+		fallthrough
+	case "UNSEEN":
+		n, err := s.ReadIMAPNumber()
+		if err != nil {
+			return err
+		} else if n == 0 {
+			return fmt.Errorf("invalid zero value")
+		}
+
+		r.CodeData = n
+
+	case "PERMANENTFLAGS":
+		flags, err := s.ReadIMAPFlagList()
+		if err != nil {
+			return err
+		}
+
+		r.CodeData = flags
+
+	default:
+		codeData, err := s.ReadAll()
+		if err != nil {
+			return err
+		}
+
+		r.CodeData = codeData
+	}
+
+	empty, err := s.IsEmpty()
+	if err != nil {
+		return err
+	} else if !empty {
+		return fmt.Errorf("invalid trailing data")
+	}
+
 	return nil
 }
 
