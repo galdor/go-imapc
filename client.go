@@ -482,6 +482,34 @@ func (c *Client) SendCommandList(ref, pattern string) (*ResponseSetList, error) 
 	return rs, nil
 }
 
+func (c *Client) SendCommandSubscribe(mailboxName string) (*ResponseSetSubscribe, error) {
+	cmd := &CommandSubscribe{
+		MailboxName: mailboxName,
+	}
+
+	rs := &ResponseSetSubscribe{}
+
+	if err := c.SendCommandWithResponseSet(cmd, rs); err != nil {
+		return nil, err
+	}
+
+	return rs, nil
+}
+
+func (c *Client) SendCommandUnsubscribe(mailboxName string) (*ResponseSetUnsubscribe, error) {
+	cmd := &CommandUnsubscribe{
+		MailboxName: mailboxName,
+	}
+
+	rs := &ResponseSetUnsubscribe{}
+
+	if err := c.SendCommandWithResponseSet(cmd, rs); err != nil {
+		return nil, err
+	}
+
+	return rs, nil
+}
+
 func (c *Client) SendCommandExamine(mailboxName string) (*ResponseSetExamine, error) {
 	cmd := &CommandExamine{
 		MailboxName: mailboxName,

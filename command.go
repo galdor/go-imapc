@@ -128,6 +128,40 @@ func (c *CommandList) Continue(w *BufferedWriter, r *ResponseContinuation) error
 }
 
 // ---------------------------------------------------------------------------
+//  Command: SUBSCRIBE
+// ---------------------------------------------------------------------------
+type CommandSubscribe struct {
+	MailboxName string
+}
+
+func (c *CommandSubscribe) Args() []interface{} {
+	mbox := QuotedStringEncode(c.MailboxName)
+
+	return []interface{}{"SUBSCRIBE", mbox}
+}
+
+func (c *CommandSubscribe) Continue(w *BufferedWriter, r *ResponseContinuation) error {
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+//  Command: UNSUBSCRIBE
+// ---------------------------------------------------------------------------
+type CommandUnsubscribe struct {
+	MailboxName string
+}
+
+func (c *CommandUnsubscribe) Args() []interface{} {
+	mbox := QuotedStringEncode(c.MailboxName)
+
+	return []interface{}{"UNSUBSCRIBE", mbox}
+}
+
+func (c *CommandUnsubscribe) Continue(w *BufferedWriter, r *ResponseContinuation) error {
+	return nil
+}
+
+// ---------------------------------------------------------------------------
 //  Command: EXAMINE
 // ---------------------------------------------------------------------------
 type CommandExamine struct {

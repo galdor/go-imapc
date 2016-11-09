@@ -52,6 +52,26 @@ func (rs *ResponseSetList) Init(resps []Response, status *ResponseStatus) error 
 }
 
 // ---------------------------------------------------------------------------
+//  Response set: SUBSCRIBE
+// ---------------------------------------------------------------------------
+type ResponseSetSubscribe struct {
+}
+
+func (rs *ResponseSetSubscribe) Init(resps []Response, status *ResponseStatus) error {
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+//  Response set: UNSUBSCRIBE
+// ---------------------------------------------------------------------------
+type ResponseSetUnsubscribe struct {
+}
+
+func (rs *ResponseSetUnsubscribe) Init(resps []Response, status *ResponseStatus) error {
+	return nil
+}
+
+// ---------------------------------------------------------------------------
 //  Response set: EXAMINE
 // ---------------------------------------------------------------------------
 type ResponseSetExamine struct {

@@ -32,6 +32,8 @@ func main() {
 
 	cmdline.AddCommand("connect", "connect to a server")
 	cmdline.AddCommand("list", "list mailboxes")
+	cmdline.AddCommand("subscribe", "subscribe to a mailbox")
+	cmdline.AddCommand("unsubscribe", "unsubscribe from a mailbox")
 	cmdline.AddCommand("examine", "examine a mailbox")
 
 	cmdline.Parse(os.Args)
@@ -50,6 +52,10 @@ func main() {
 		cmdFn = CmdConnect
 	case "list":
 		cmdFn = CmdList
+	case "subscribe":
+		cmdFn = CmdSubscribe
+	case "unsubscribe":
+		cmdFn = CmdUnsubscribe
 	case "examine":
 		cmdFn = CmdExamine
 	default:
@@ -92,6 +98,32 @@ func CmdList(client *imapc.Client, args []string) {
 		}
 
 		fmt.Printf("\n")
+	}
+}
+
+func CmdSubscribe(client *imapc.Client, args []string) {
+	cmdline := cmdline.New()
+	cmdline.AddArgument("mailbox", "the name of the mailbox")
+	cmdline.Parse(args)
+
+	mailboxName := cmdline.ArgumentValue("mailbox")
+
+	_, err := client.SendCommandSubscribe(mailboxName)
+	if err != nil {
+		Die("%v", err)
+	}
+}
+
+func CmdUnsubscribe(client *imapc.Client, args []string) {
+	cmdline := cmdline.New()
+	cmdline.AddArgument("mailbox", "the name of the mailbox")
+	cmdline.Parse(args)
+
+	mailboxName := cmdline.ArgumentValue("mailbox")
+
+	_, err := client.SendCommandUnsubscribe(mailboxName)
+	if err != nil {
+		Die("%v", err)
 	}
 }
 
