@@ -72,6 +72,26 @@ func (rs *ResponseSetLSub) Init(resps []Response, status *ResponseStatus) error 
 }
 
 // ---------------------------------------------------------------------------
+//  Response set: CREATE
+// ---------------------------------------------------------------------------
+type ResponseSetCreate struct {
+}
+
+func (rs *ResponseSetCreate) Init(resps []Response, status *ResponseStatus) error {
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+//  Response set: DELETE
+// ---------------------------------------------------------------------------
+type ResponseSetDelete struct {
+}
+
+func (rs *ResponseSetDelete) Init(resps []Response, status *ResponseStatus) error {
+	return nil
+}
+
+// ---------------------------------------------------------------------------
 //  Response set: SUBSCRIBE
 // ---------------------------------------------------------------------------
 type ResponseSetSubscribe struct {

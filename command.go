@@ -147,6 +147,40 @@ func (c *CommandLSub) Continue(w *BufferedWriter, r *ResponseContinuation) error
 }
 
 // ---------------------------------------------------------------------------
+//  Command: CREATE
+// ---------------------------------------------------------------------------
+type CommandCreate struct {
+	MailboxName string
+}
+
+func (c *CommandCreate) Args() []interface{} {
+	mbox := QuotedStringEncode(c.MailboxName)
+
+	return []interface{}{"CREATE", mbox}
+}
+
+func (c *CommandCreate) Continue(w *BufferedWriter, r *ResponseContinuation) error {
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+//  Command: DELETE
+// ---------------------------------------------------------------------------
+type CommandDelete struct {
+	MailboxName string
+}
+
+func (c *CommandDelete) Args() []interface{} {
+	mbox := QuotedStringEncode(c.MailboxName)
+
+	return []interface{}{"DELETE", mbox}
+}
+
+func (c *CommandDelete) Continue(w *BufferedWriter, r *ResponseContinuation) error {
+	return nil
+}
+
+// ---------------------------------------------------------------------------
 //  Command: SUBSCRIBE
 // ---------------------------------------------------------------------------
 type CommandSubscribe struct {

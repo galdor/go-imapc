@@ -33,6 +33,8 @@ func main() {
 	cmdline.AddCommand("connect", "connect to a server")
 	cmdline.AddCommand("list", "list mailboxes")
 	cmdline.AddCommand("lsub", "list subscribed mailboxes")
+	cmdline.AddCommand("create", "create a mailbox")
+	cmdline.AddCommand("delete", "delete a mailbox")
 	cmdline.AddCommand("subscribe", "subscribe to a mailbox")
 	cmdline.AddCommand("unsubscribe", "unsubscribe from a mailbox")
 	cmdline.AddCommand("examine", "examine a mailbox")
@@ -55,6 +57,10 @@ func main() {
 		cmdFn = CmdList
 	case "lsub":
 		cmdFn = CmdLSub
+	case "create":
+		cmdFn = CmdCreate
+	case "delete":
+		cmdFn = CmdDelete
 	case "subscribe":
 		cmdFn = CmdSubscribe
 	case "unsubscribe":
@@ -125,6 +131,32 @@ func CmdLSub(client *imapc.Client, args []string) {
 		}
 
 		fmt.Printf("\n")
+	}
+}
+
+func CmdCreate(client *imapc.Client, args []string) {
+	cmdline := cmdline.New()
+	cmdline.AddArgument("mailbox", "the name of the mailbox")
+	cmdline.Parse(args)
+
+	mailboxName := cmdline.ArgumentValue("mailbox")
+
+	_, err := client.SendCommandCreate(mailboxName)
+	if err != nil {
+		Die("%v", err)
+	}
+}
+
+func CmdDelete(client *imapc.Client, args []string) {
+	cmdline := cmdline.New()
+	cmdline.AddArgument("mailbox", "the name of the mailbox")
+	cmdline.Parse(args)
+
+	mailboxName := cmdline.ArgumentValue("mailbox")
+
+	_, err := client.SendCommandDelete(mailboxName)
+	if err != nil {
+		Die("%v", err)
 	}
 }
 

@@ -497,6 +497,34 @@ func (c *Client) SendCommandLSub(ref, pattern string) (*ResponseSetLSub, error) 
 	return rs, nil
 }
 
+func (c *Client) SendCommandCreate(mailboxName string) (*ResponseSetCreate, error) {
+	cmd := &CommandCreate{
+		MailboxName: mailboxName,
+	}
+
+	rs := &ResponseSetCreate{}
+
+	if err := c.SendCommandWithResponseSet(cmd, rs); err != nil {
+		return nil, err
+	}
+
+	return rs, nil
+}
+
+func (c *Client) SendCommandDelete(mailboxName string) (*ResponseSetDelete, error) {
+	cmd := &CommandDelete{
+		MailboxName: mailboxName,
+	}
+
+	rs := &ResponseSetDelete{}
+
+	if err := c.SendCommandWithResponseSet(cmd, rs); err != nil {
+		return nil, err
+	}
+
+	return rs, nil
+}
+
 func (c *Client) SendCommandSubscribe(mailboxName string) (*ResponseSetSubscribe, error) {
 	cmd := &CommandSubscribe{
 		MailboxName: mailboxName,
