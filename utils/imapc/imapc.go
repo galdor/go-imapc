@@ -32,6 +32,7 @@ func main() {
 
 	cmdline.AddCommand("connect", "connect to a server")
 	cmdline.AddCommand("list", "list mailboxes")
+	cmdline.AddCommand("lsub", "list subscribed mailboxes")
 	cmdline.AddCommand("subscribe", "subscribe to a mailbox")
 	cmdline.AddCommand("unsubscribe", "unsubscribe from a mailbox")
 	cmdline.AddCommand("examine", "examine a mailbox")
@@ -52,6 +53,8 @@ func main() {
 		cmdFn = CmdConnect
 	case "list":
 		cmdFn = CmdList
+	case "lsub":
+		cmdFn = CmdLSub
 	case "subscribe":
 		cmdFn = CmdSubscribe
 	case "unsubscribe":
@@ -79,6 +82,30 @@ func CmdConnect(client *imapc.Client, args []string) {
 
 func CmdList(client *imapc.Client, args []string) {
 	rs, err := client.SendCommandList("", "*")
+	if err != nil {
+		Die("%v", err)
+	}
+
+	width := 0
+	for _, mbox := range rs.Mailboxes {
+		if len(mbox.Name) > width {
+			width = len(mbox.Name)
+		}
+	}
+
+	for _, mbox := range rs.Mailboxes {
+		fmt.Printf("%-*s ", width, mbox.Name)
+
+		for _, flag := range mbox.Flags {
+			fmt.Printf(" \\%s", flag)
+		}
+
+		fmt.Printf("\n")
+	}
+}
+
+func CmdLSub(client *imapc.Client, args []string) {
+	rs, err := client.SendCommandLSub("", "*")
 	if err != nil {
 		Die("%v", err)
 	}

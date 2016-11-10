@@ -15,6 +15,12 @@
 
 package imapc
 
+type MailboxList struct {
+	Flags              []string
+	HierarchyDelimiter rune
+	Name               string
+}
+
 func QuotedStringEncode(s string) []byte {
 	return QuoteByteString(ModifiedUTF7Encode([]byte(s)))
 }

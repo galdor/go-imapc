@@ -22,26 +22,46 @@ type ResponseSet interface {
 // ---------------------------------------------------------------------------
 //  Response set: LIST
 // ---------------------------------------------------------------------------
-type ResponseSetListMailbox struct {
-	Name               string
-	Flags              []string
-	HierarchyDelimiter rune
-}
-
 type ResponseSetList struct {
-	Mailboxes []ResponseSetListMailbox
+	Mailboxes []MailboxList
 }
 
 func (rs *ResponseSetList) Init(resps []Response, status *ResponseStatus) error {
-	rs.Mailboxes = []ResponseSetListMailbox{}
+	rs.Mailboxes = []MailboxList{}
 
 	for _, resp := range resps {
 		switch tresp := resp.(type) {
 		case *ResponseList:
-			mbox := ResponseSetListMailbox{
-				Name:               tresp.MailboxName,
-				Flags:              tresp.MailboxFlags,
+			mbox := MailboxList{
+				Flags:              tresp.Flags,
 				HierarchyDelimiter: tresp.HierarchyDelimiter,
+				Name:               tresp.Name,
+			}
+
+			rs.Mailboxes = append(rs.Mailboxes, mbox)
+		}
+	}
+
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+//  Response set: LSUB
+// ---------------------------------------------------------------------------
+type ResponseSetLSub struct {
+	Mailboxes []MailboxList
+}
+
+func (rs *ResponseSetLSub) Init(resps []Response, status *ResponseStatus) error {
+	rs.Mailboxes = []MailboxList{}
+
+	for _, resp := range resps {
+		switch tresp := resp.(type) {
+		case *ResponseLSub:
+			mbox := MailboxList{
+				Flags:              tresp.Flags,
+				HierarchyDelimiter: tresp.HierarchyDelimiter,
+				Name:               tresp.Name,
 			}
 
 			rs.Mailboxes = append(rs.Mailboxes, mbox)

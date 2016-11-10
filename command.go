@@ -128,6 +128,25 @@ func (c *CommandList) Continue(w *BufferedWriter, r *ResponseContinuation) error
 }
 
 // ---------------------------------------------------------------------------
+//  Command: LSUB
+// ---------------------------------------------------------------------------
+type CommandLSub struct {
+	Ref     string
+	Pattern string
+}
+
+func (c *CommandLSub) Args() []interface{} {
+	ref := QuotedStringEncode(c.Ref)
+	pattern := QuotedStringEncode(c.Pattern)
+
+	return []interface{}{"LSUB", ref, pattern}
+}
+
+func (c *CommandLSub) Continue(w *BufferedWriter, r *ResponseContinuation) error {
+	return nil
+}
+
+// ---------------------------------------------------------------------------
 //  Command: SUBSCRIBE
 // ---------------------------------------------------------------------------
 type CommandSubscribe struct {

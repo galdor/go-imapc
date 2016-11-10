@@ -400,6 +400,69 @@ func (s *Stream) ReadIMAPNumber() (uint32, error) {
 	return uint32(n), err
 }
 
+func (s *Stream) ReadIMAPMailboxList() (*MailboxList, error) {
+	mbox := &MailboxList{}
+
+	// Mailbox flags
+	flags, err := s.ReadIMAPFlagList()
+	if err != nil {
+		return nil, err
+	}
+	mbox.Flags = flags
+
+	if found, err := s.SkipByte(' '); err != nil {
+		return nil, err
+	} else if !found {
+		return nil, fmt.Errorf("missing space after mailbox flags")
+	}
+
+	// Hierarchy delimiter
+	if found, err := s.SkipByte('"'); err != nil {
+		return nil, err
+	} else if !found {
+		return nil,
+			fmt.Errorf("missing first '\"' for hierarchy delimiter")
+	}
+
+	if found, err := s.SkipBytes([]byte("NIL")); err != nil {
+		return nil, err
+	} else if !found {
+		c, _, err := s.ReadIMAPQuotedChar()
+		if err != nil {
+			return nil, err
+		}
+
+		mbox.HierarchyDelimiter = rune(c)
+	}
+
+	if found, err := s.SkipByte('"'); err != nil {
+		return nil, err
+	} else if !found {
+		return nil,
+			fmt.Errorf("missing last '\"' for hierarchy delimiter")
+	}
+
+	if found, err := s.SkipByte(' '); err != nil {
+		return nil, err
+	} else if !found {
+		return nil,
+			fmt.Errorf("missing space after hierarchy delimiter")
+	}
+
+	// Name
+	encodedName, err := s.ReadIMAPAstring()
+	if err != nil {
+		return nil, err
+	}
+	name, err := ModifiedUTF7Decode(encodedName)
+	if err != nil {
+		return nil, fmt.Errorf("invalid mailbox name: %v", err)
+	}
+	mbox.Name = string(name)
+
+	return mbox, nil
+}
+
 func dupBytes(data []byte) []byte {
 	ndata := make([]byte, len(data))
 	copy(ndata, data)

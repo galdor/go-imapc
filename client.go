@@ -326,7 +326,7 @@ func (c *Client) processGreeting() error {
 		return fmt.Errorf("server shutting down: %v", tresp.Text.Text)
 
 	default:
-		return fmt.Errorf("invalid greeting %s", resp.Name())
+		return fmt.Errorf("invalid greeting %#v", resp)
 	}
 
 	if hasCaps {
@@ -474,6 +474,21 @@ func (c *Client) SendCommandList(ref, pattern string) (*ResponseSetList, error) 
 	}
 
 	rs := &ResponseSetList{}
+
+	if err := c.SendCommandWithResponseSet(cmd, rs); err != nil {
+		return nil, err
+	}
+
+	return rs, nil
+}
+
+func (c *Client) SendCommandLSub(ref, pattern string) (*ResponseSetLSub, error) {
+	cmd := &CommandLSub{
+		Ref:     ref,
+		Pattern: pattern,
+	}
+
+	rs := &ResponseSetLSub{}
 
 	if err := c.SendCommandWithResponseSet(cmd, rs); err != nil {
 		return nil, err

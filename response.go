@@ -22,7 +22,6 @@ import (
 )
 
 type Response interface {
-	Name() string
 	fmt.GoStringer
 	Read(*Stream) error
 }
@@ -112,8 +111,6 @@ type ResponseStatus struct {
 	Response     Response
 }
 
-func (r *ResponseStatus) Name() string { return r.ResponseName }
-
 func (r *ResponseStatus) GoString() string {
 	return fmt.Sprintf("#<response-status %#v>", r.Response)
 }
@@ -132,8 +129,6 @@ type ResponseOk struct {
 	Text *ResponseText
 }
 
-func (r *ResponseOk) Name() string { return "OK" }
-
 func (r *ResponseOk) GoString() string {
 	return fmt.Sprintf("#<response-ok %#v>", r.Text)
 }
@@ -148,8 +143,6 @@ type ResponseNo struct {
 	Text *ResponseText
 }
 
-func (r *ResponseNo) Name() string { return "NO" }
-
 func (r *ResponseNo) GoString() string {
 	return fmt.Sprintf("#<response-no %#v>", r.Text)
 }
@@ -163,8 +156,6 @@ func (r *ResponseNo) Read(s *Stream) error {
 type ResponseBad struct {
 	Text *ResponseText
 }
-
-func (r *ResponseBad) Name() string { return "BAD" }
 
 func (r *ResponseBad) GoString() string {
 	return fmt.Sprintf("#<response-bad %#v>", r.Text)
@@ -227,6 +218,8 @@ func ReadResponseData(s *Stream) (Response, error) {
 			r = &ResponseCapability{}
 		case "LIST":
 			r = &ResponseList{}
+		case "LSUB":
+			r = &ResponseLSub{}
 		case "FLAGS":
 			r = &ResponseFlags{}
 		default:
@@ -242,8 +235,6 @@ type ResponsePreAuth struct {
 	Text *ResponseText
 }
 
-func (r *ResponsePreAuth) Name() string { return "PREAUTH" }
-
 func (r *ResponsePreAuth) GoString() string {
 	return fmt.Sprintf("#<response-pre-auth %#v>", r.Text)
 }
@@ -258,8 +249,6 @@ type ResponseBye struct {
 	Text *ResponseText
 }
 
-func (r *ResponseBye) Name() string { return "BYE" }
-
 func (r *ResponseBye) GoString() string {
 	return fmt.Sprintf("#<response-bye %#v>", r.Text)
 }
@@ -273,8 +262,6 @@ func (r *ResponseBye) Read(s *Stream) error {
 type ResponseCapability struct {
 	Caps []string
 }
-
-func (r *ResponseCapability) Name() string { return "CAPABILITY" }
 
 func (r *ResponseCapability) GoString() string {
 	return fmt.Sprintf("#<response-capability %v>", r.Caps)
@@ -297,79 +284,46 @@ func (r *ResponseCapability) Read(s *Stream) error {
 }
 
 // LIST
-type ResponseList struct {
-	MailboxFlags       []string
-	HierarchyDelimiter rune
-	MailboxName        string
-}
-
-func (r *ResponseList) Name() string { return "LIST" }
+type ResponseList MailboxList
 
 func (r *ResponseList) GoString() string {
-	return fmt.Sprintf("#<response-list %q %v>",
-		r.MailboxName, r.MailboxFlags)
+	return fmt.Sprintf("#<response-list %q %v>", r.Name, r.Flags)
 }
 
 func (r *ResponseList) Read(s *Stream) error {
-	// Mailbox flags
-	flags, err := s.ReadIMAPFlagList()
+	mbox, err := s.ReadIMAPMailboxList()
 	if err != nil {
 		return err
 	}
-	r.MailboxFlags = flags
+	*r = ResponseList(*mbox)
 
-	if found, err := s.SkipByte(' '); err != nil {
-		return err
-	} else if !found {
-		return fmt.Errorf("missing space after mailbox flags")
-	}
-
-	// Hierarchy delimiter
-	if found, err := s.SkipByte('"'); err != nil {
-		return err
-	} else if !found {
-		return fmt.Errorf("missing first '\"' for hierarchy delimiter")
-	}
-
-	if found, err := s.SkipBytes([]byte("NIL")); err != nil {
-		return err
-	} else if !found {
-		c, _, err := s.ReadIMAPQuotedChar()
-		if err != nil {
-			return err
-		}
-
-		r.HierarchyDelimiter = rune(c)
-	}
-
-	if found, err := s.SkipByte('"'); err != nil {
-		return err
-	} else if !found {
-		return fmt.Errorf("missing last '\"' for hierarchy delimiter")
-	}
-
-	if found, err := s.SkipByte(' '); err != nil {
-		return err
-	} else if !found {
-		return fmt.Errorf("missing space after hierarchy delimiter")
-	}
-
-	// Name
-	encodedName, err := s.ReadIMAPAstring()
-	if err != nil {
-		return err
-	}
-	name, err := ModifiedUTF7Decode(encodedName)
-	if err != nil {
-		return fmt.Errorf("invalid mailbox name: %v", err)
-	}
-	r.MailboxName = string(name)
-
-	// End
 	if ok, err := s.SkipBytes([]byte("\r\n")); err != nil {
 		return err
 	} else if !ok {
-		return fmt.Errorf("invalid character after mailbox name")
+		return fmt.Errorf("invalid character after mailbox list")
+	}
+
+	return nil
+}
+
+// LSUB
+type ResponseLSub MailboxList
+
+func (r *ResponseLSub) GoString() string {
+	return fmt.Sprintf("#<response-lsub %q %v>", r.Name, r.Flags)
+}
+
+func (r *ResponseLSub) Read(s *Stream) error {
+	mbox, err := s.ReadIMAPMailboxList()
+	if err != nil {
+		return err
+	}
+	*r = ResponseLSub(*mbox)
+
+	if ok, err := s.SkipBytes([]byte("\r\n")); err != nil {
+		return err
+	} else if !ok {
+		return fmt.Errorf("invalid character after mailbox list")
 	}
 
 	return nil
@@ -379,8 +333,6 @@ func (r *ResponseList) Read(s *Stream) error {
 type ResponseFlags struct {
 	Flags []string
 }
-
-func (r *ResponseFlags) Name() string { return "FLAGS" }
 
 func (r *ResponseFlags) GoString() string {
 	return fmt.Sprintf("#<response-flags %v>", r.Flags)
@@ -410,8 +362,6 @@ type ResponseExists struct {
 	Count uint32
 }
 
-func (r *ResponseExists) Name() string { return "EXISTS" }
-
 func (r *ResponseExists) GoString() string {
 	return fmt.Sprintf("#<response-exists %d>", r.Count)
 }
@@ -431,8 +381,6 @@ func (r *ResponseExists) Read(s *Stream) error {
 type ResponseRecent struct {
 	Count uint32
 }
-
-func (r *ResponseRecent) Name() string { return "RECENT" }
 
 func (r *ResponseRecent) GoString() string {
 	return fmt.Sprintf("#<response-recent %d>", r.Count)
@@ -464,8 +412,6 @@ func ReadResponseContinuation(s *Stream) (Response, error) {
 type ResponseContinuation struct {
 	Text string
 }
-
-func (r *ResponseContinuation) Name() string { return "" }
 
 func (r *ResponseContinuation) GoString() string {
 	return fmt.Sprintf("#<response-continuation %q>", r.Text)
