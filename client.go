@@ -497,60 +497,52 @@ func (c *Client) SendCommandLSub(ref, pattern string) (*ResponseSetLSub, error) 
 	return rs, nil
 }
 
-func (c *Client) SendCommandCreate(mailboxName string) (*ResponseSetCreate, error) {
+func (c *Client) SendCommandCreate(mailboxName string) error {
 	cmd := &CommandCreate{
 		MailboxName: mailboxName,
 	}
 
-	rs := &ResponseSetCreate{}
-
-	if err := c.SendCommandWithResponseSet(cmd, rs); err != nil {
-		return nil, err
+	if _, _, err := c.SendCommand(cmd); err != nil {
+		return err
 	}
 
-	return rs, nil
+	return nil
 }
 
-func (c *Client) SendCommandDelete(mailboxName string) (*ResponseSetDelete, error) {
+func (c *Client) SendCommandDelete(mailboxName string) error {
 	cmd := &CommandDelete{
 		MailboxName: mailboxName,
 	}
 
-	rs := &ResponseSetDelete{}
-
-	if err := c.SendCommandWithResponseSet(cmd, rs); err != nil {
-		return nil, err
+	if _, _, err := c.SendCommand(cmd); err != nil {
+		return err
 	}
 
-	return rs, nil
+	return nil
 }
 
-func (c *Client) SendCommandSubscribe(mailboxName string) (*ResponseSetSubscribe, error) {
+func (c *Client) SendCommandSubscribe(mailboxName string) error {
 	cmd := &CommandSubscribe{
 		MailboxName: mailboxName,
 	}
 
-	rs := &ResponseSetSubscribe{}
-
-	if err := c.SendCommandWithResponseSet(cmd, rs); err != nil {
-		return nil, err
+	if _, _, err := c.SendCommand(cmd); err != nil {
+		return err
 	}
 
-	return rs, nil
+	return nil
 }
 
-func (c *Client) SendCommandUnsubscribe(mailboxName string) (*ResponseSetUnsubscribe, error) {
+func (c *Client) SendCommandUnsubscribe(mailboxName string) error {
 	cmd := &CommandUnsubscribe{
 		MailboxName: mailboxName,
 	}
 
-	rs := &ResponseSetUnsubscribe{}
-
-	if err := c.SendCommandWithResponseSet(cmd, rs); err != nil {
-		return nil, err
+	if _, _, err := c.SendCommand(cmd); err != nil {
+		return err
 	}
 
-	return rs, nil
+	return nil
 }
 
 func (c *Client) SendCommandExamine(mailboxName string) (*ResponseSetExamine, error) {

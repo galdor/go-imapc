@@ -149,8 +149,7 @@ func CmdCreate(client *imapc.Client, args []string) {
 
 	mailboxName := cmdline.ArgumentValue("mailbox")
 
-	_, err := client.SendCommandCreate(mailboxName)
-	if err != nil {
+	if err := client.SendCommandCreate(mailboxName); err != nil {
 		Die("%v", err)
 	}
 }
@@ -162,8 +161,7 @@ func CmdDelete(client *imapc.Client, args []string) {
 
 	mailboxName := cmdline.ArgumentValue("mailbox")
 
-	_, err := client.SendCommandDelete(mailboxName)
-	if err != nil {
+	if err := client.SendCommandDelete(mailboxName); err != nil {
 		Die("%v", err)
 	}
 }
@@ -175,8 +173,7 @@ func CmdSubscribe(client *imapc.Client, args []string) {
 
 	mailboxName := cmdline.ArgumentValue("mailbox")
 
-	_, err := client.SendCommandSubscribe(mailboxName)
-	if err != nil {
+	if err := client.SendCommandSubscribe(mailboxName); err != nil {
 		Die("%v", err)
 	}
 }
@@ -188,8 +185,7 @@ func CmdUnsubscribe(client *imapc.Client, args []string) {
 
 	mailboxName := cmdline.ArgumentValue("mailbox")
 
-	_, err := client.SendCommandUnsubscribe(mailboxName)
-	if err != nil {
+	if err := client.SendCommandUnsubscribe(mailboxName); err != nil {
 		Die("%v", err)
 	}
 }
