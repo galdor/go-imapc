@@ -230,3 +230,20 @@ func (c *CommandExamine) Args() []interface{} {
 func (c *CommandExamine) Continue(w *BufferedWriter, r *ResponseContinuation) error {
 	return nil
 }
+
+// ---------------------------------------------------------------------------
+//  Command: SELECT
+// ---------------------------------------------------------------------------
+type CommandSelect struct {
+	MailboxName string
+}
+
+func (c *CommandSelect) Args() []interface{} {
+	mailboxName := QuotedStringEncode(c.MailboxName)
+
+	return []interface{}{"SELECT", mailboxName}
+}
+
+func (c *CommandSelect) Continue(w *BufferedWriter, r *ResponseContinuation) error {
+	return nil
+}

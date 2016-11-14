@@ -151,3 +151,44 @@ func (rs *ResponseSetExamine) Init(resps []Response, status *ResponseStatus) err
 
 	return nil
 }
+
+// ---------------------------------------------------------------------------
+//  Response set: SELECT
+// ---------------------------------------------------------------------------
+type ResponseSetSelect struct {
+	Flags          []string
+	Exists         uint32
+	Recent         uint32
+	Unseen         uint32
+	PermanentFlags []string
+	UIDNext        uint32
+	UIDValidity    uint32
+}
+
+func (rs *ResponseSetSelect) Init(resps []Response, status *ResponseStatus) error {
+	for _, resp := range resps {
+		switch tresp := resp.(type) {
+		case *ResponseFlags:
+			rs.Flags = tresp.Flags
+		case *ResponseExists:
+			rs.Exists = tresp.Count
+		case *ResponseRecent:
+			rs.Recent = tresp.Count
+		case *ResponseOk:
+			codeData := tresp.Text.CodeData
+
+			switch tresp.Text.Code {
+			case "UNSEEN":
+				rs.Unseen = codeData.(uint32)
+			case "PERMANENTFLAGS":
+				rs.PermanentFlags = codeData.([]string)
+			case "UIDNEXT":
+				rs.UIDNext = codeData.(uint32)
+			case "UIDVALIDITY":
+				rs.UIDValidity = codeData.(uint32)
+			}
+		}
+	}
+
+	return nil
+}

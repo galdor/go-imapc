@@ -566,3 +566,17 @@ func (c *Client) SendCommandExamine(mailboxName string) (*ResponseSetExamine, er
 
 	return rs, nil
 }
+
+func (c *Client) SendCommandSelect(mailboxName string) (*ResponseSetSelect, error) {
+	cmd := &CommandSelect{
+		MailboxName: mailboxName,
+	}
+
+	rs := &ResponseSetSelect{}
+
+	if err := c.SendCommandWithResponseSet(cmd, rs); err != nil {
+		return nil, err
+	}
+
+	return rs, nil
+}

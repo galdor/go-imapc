@@ -28,6 +28,7 @@ func main() {
 	cmdline := cmdline.New()
 
 	cmdline.AddOption("l", "login", "login", "set the login")
+	cmdline.AddOption("m", "mailbox", "name", "select a mailbox")
 	cmdline.AddOption("p", "password", "password", "set the password")
 
 	cmdline.AddCommand("connect", "connect to a server")
@@ -42,6 +43,7 @@ func main() {
 	cmdline.Parse(os.Args)
 
 	login := cmdline.OptionValue("login")
+	mailbox := cmdline.OptionValue("mailbox")
 	password := cmdline.OptionValue("password")
 
 	cmd := cmdline.CommandName()
@@ -78,6 +80,12 @@ func main() {
 
 	if err := client.Connect(); err != nil {
 		Die("%v", err)
+	}
+
+	if mailbox != "" {
+		if _, err := client.SendCommandSelect(mailbox); err != nil {
+			Die("cannot select mailbox: %v", err)
+		}
 	}
 
 	cmdFn(client, append([]string{cmd}, cmdArgs...))
