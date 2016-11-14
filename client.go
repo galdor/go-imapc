@@ -33,7 +33,6 @@ const (
 	ClientStateDisconnected     ClientState = "disconnected"
 	ClientStateNotAuthenticated ClientState = "not-authenticated"
 	ClientStateAuthenticated    ClientState = "authenticated"
-	ClientStateSelected         ClientState = "selected"
 	ClientStateLogout           ClientState = "logout"
 )
 
