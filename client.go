@@ -581,3 +581,13 @@ func (c *Client) SendCommandClose() error {
 
 	return nil
 }
+
+func (c *Client) SendCommandLogout() error {
+	cmd := &CommandLogout{}
+
+	if _, _, err := c.SendCommand(cmd); err != nil {
+		return err
+	}
+
+	return nil
+}

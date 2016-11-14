@@ -98,6 +98,8 @@ func ReadResponseStatus(s *Stream) (Response, error) {
 		r.Response = &ResponseNo{}
 	case "BAD":
 		r.Response = &ResponseBad{}
+	case "BYE":
+		r.Response = &ResponseBye{}
 	default:
 		return nil, fmt.Errorf("unknown response %q", name)
 	}

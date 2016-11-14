@@ -260,3 +260,16 @@ func (c *CommandClose) Args() []interface{} {
 func (c *CommandClose) Continue(w *BufferedWriter, r *ResponseContinuation) error {
 	return nil
 }
+
+// ---------------------------------------------------------------------------
+//  Command: LOGOUT
+// ---------------------------------------------------------------------------
+type CommandLogout struct{}
+
+func (c *CommandLogout) Args() []interface{} {
+	return []interface{}{"LOGOUT"}
+}
+
+func (c *CommandLogout) Continue(w *BufferedWriter, r *ResponseContinuation) error {
+	return nil
+}
