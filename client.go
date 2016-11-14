@@ -571,3 +571,13 @@ func (c *Client) SendCommandSelect(mailboxName string) (*ResponseSetSelect, erro
 
 	return rs, nil
 }
+
+func (c *Client) SendCommandClose() error {
+	cmd := &CommandClose{}
+
+	if _, _, err := c.SendCommand(cmd); err != nil {
+		return err
+	}
+
+	return nil
+}

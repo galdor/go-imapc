@@ -247,3 +247,16 @@ func (c *CommandSelect) Args() []interface{} {
 func (c *CommandSelect) Continue(w *BufferedWriter, r *ResponseContinuation) error {
 	return nil
 }
+
+// ---------------------------------------------------------------------------
+//  Command: CLOSE
+// ---------------------------------------------------------------------------
+type CommandClose struct{}
+
+func (c *CommandClose) Args() []interface{} {
+	return []interface{}{"CLOSE"}
+}
+
+func (c *CommandClose) Continue(w *BufferedWriter, r *ResponseContinuation) error {
+	return nil
+}
