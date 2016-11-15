@@ -181,6 +181,25 @@ func (c *CommandDelete) Continue(w *BufferedWriter, r *ResponseContinuation) err
 }
 
 // ---------------------------------------------------------------------------
+//  Command: RENAME
+// ---------------------------------------------------------------------------
+type CommandRename struct {
+	MailboxName    string
+	MailboxNewName string
+}
+
+func (c *CommandRename) Args() []interface{} {
+	mbox := QuotedStringEncode(c.MailboxName)
+	newName := QuotedStringEncode(c.MailboxNewName)
+
+	return []interface{}{"RENAME", mbox, newName}
+}
+
+func (c *CommandRename) Continue(w *BufferedWriter, r *ResponseContinuation) error {
+	return nil
+}
+
+// ---------------------------------------------------------------------------
 //  Command: SUBSCRIBE
 // ---------------------------------------------------------------------------
 type CommandSubscribe struct {

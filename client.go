@@ -520,6 +520,19 @@ func (c *Client) SendCommandDelete(mailboxName string) error {
 	return nil
 }
 
+func (c *Client) SendCommandRename(mailboxName, mailboxNewName string) error {
+	cmd := &CommandRename{
+		MailboxName:    mailboxName,
+		MailboxNewName: mailboxNewName,
+	}
+
+	if _, _, err := c.SendCommand(cmd); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (c *Client) SendCommandSubscribe(mailboxName string) error {
 	cmd := &CommandSubscribe{
 		MailboxName: mailboxName,
