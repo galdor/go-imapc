@@ -89,6 +89,16 @@ func main() {
 	}
 
 	cmdFn(client, append([]string{cmd}, cmdArgs...))
+
+	if mailbox != "" {
+		if err := client.SendCommandClose(); err != nil {
+			Die("cannot close mailbox: %v", err)
+		}
+	}
+
+	if err := client.SendCommandLogout(); err != nil {
+		Die("cannot logout: %v", err)
+	}
 }
 
 func CmdConnect(client *imapc.Client, args []string) {
