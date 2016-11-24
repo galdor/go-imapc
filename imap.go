@@ -23,7 +23,7 @@ type MailboxList struct {
 	Name               string
 }
 
-func QuotedStringEncode(s string) []byte {
+func MailboxNameEncode(s string) []byte {
 	return QuoteByteString(ModifiedUTF7Encode([]byte(s)))
 }
 
@@ -35,7 +35,7 @@ func AStringEncodeByteString(bs []byte) []byte {
 	if ByteStringAll(bs, IsAtomChar) {
 		return bs
 	} else {
-		return QuoteByteString(ModifiedUTF7Encode(bs))
+		return QuoteByteString(bs)
 	}
 }
 

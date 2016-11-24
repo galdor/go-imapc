@@ -117,8 +117,8 @@ type CommandList struct {
 }
 
 func (c *CommandList) Args() []interface{} {
-	ref := QuotedStringEncode(c.Ref)
-	pattern := QuotedStringEncode(c.Pattern)
+	ref := MailboxNameEncode(c.Ref)
+	pattern := MailboxNameEncode(c.Pattern)
 
 	return []interface{}{"LIST", ref, pattern}
 }
@@ -136,8 +136,8 @@ type CommandLSub struct {
 }
 
 func (c *CommandLSub) Args() []interface{} {
-	ref := QuotedStringEncode(c.Ref)
-	pattern := QuotedStringEncode(c.Pattern)
+	ref := MailboxNameEncode(c.Ref)
+	pattern := MailboxNameEncode(c.Pattern)
 
 	return []interface{}{"LSUB", ref, pattern}
 }
@@ -154,7 +154,7 @@ type CommandCreate struct {
 }
 
 func (c *CommandCreate) Args() []interface{} {
-	mbox := QuotedStringEncode(c.MailboxName)
+	mbox := MailboxNameEncode(c.MailboxName)
 
 	return []interface{}{"CREATE", mbox}
 }
@@ -171,7 +171,7 @@ type CommandDelete struct {
 }
 
 func (c *CommandDelete) Args() []interface{} {
-	mbox := QuotedStringEncode(c.MailboxName)
+	mbox := MailboxNameEncode(c.MailboxName)
 
 	return []interface{}{"DELETE", mbox}
 }
@@ -189,8 +189,8 @@ type CommandRename struct {
 }
 
 func (c *CommandRename) Args() []interface{} {
-	mbox := QuotedStringEncode(c.MailboxName)
-	newName := QuotedStringEncode(c.MailboxNewName)
+	mbox := MailboxNameEncode(c.MailboxName)
+	newName := MailboxNameEncode(c.MailboxNewName)
 
 	return []interface{}{"RENAME", mbox, newName}
 }
@@ -207,7 +207,7 @@ type CommandSubscribe struct {
 }
 
 func (c *CommandSubscribe) Args() []interface{} {
-	mbox := QuotedStringEncode(c.MailboxName)
+	mbox := MailboxNameEncode(c.MailboxName)
 
 	return []interface{}{"SUBSCRIBE", mbox}
 }
@@ -224,7 +224,7 @@ type CommandUnsubscribe struct {
 }
 
 func (c *CommandUnsubscribe) Args() []interface{} {
-	mbox := QuotedStringEncode(c.MailboxName)
+	mbox := MailboxNameEncode(c.MailboxName)
 
 	return []interface{}{"UNSUBSCRIBE", mbox}
 }
@@ -241,7 +241,7 @@ type CommandExamine struct {
 }
 
 func (c *CommandExamine) Args() []interface{} {
-	mailboxName := QuotedStringEncode(c.MailboxName)
+	mailboxName := MailboxNameEncode(c.MailboxName)
 
 	return []interface{}{"EXAMINE", mailboxName}
 }
@@ -258,7 +258,7 @@ type CommandSelect struct {
 }
 
 func (c *CommandSelect) Args() []interface{} {
-	mailboxName := QuotedStringEncode(c.MailboxName)
+	mailboxName := MailboxNameEncode(c.MailboxName)
 
 	return []interface{}{"SELECT", mailboxName}
 }
