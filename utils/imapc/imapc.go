@@ -127,7 +127,7 @@ func CmdList(client *imapc.Client, args []string) {
 		fmt.Printf("%-*s ", width, mbox.Name)
 
 		for _, flag := range mbox.Flags {
-			fmt.Printf(" \\%s", flag)
+			fmt.Printf(" %s", flag)
 		}
 
 		fmt.Printf("\n")
@@ -151,7 +151,7 @@ func CmdLSub(client *imapc.Client, args []string) {
 		fmt.Printf("%-*s ", width, mbox.Name)
 
 		for _, flag := range mbox.Flags {
-			fmt.Printf(" \\%s", flag)
+			fmt.Printf(" %s", flag)
 		}
 
 		fmt.Printf("\n")
@@ -235,13 +235,13 @@ func CmdExamine(client *imapc.Client, args []string) {
 
 	fmt.Printf("Flags           ")
 	for _, flag := range rs.Flags {
-		fmt.Printf(" \\%s", flag)
+		fmt.Printf(" %s", flag)
 	}
 	fmt.Printf("\n")
 
 	fmt.Printf("Permanent flags ")
 	for _, flag := range rs.PermanentFlags {
-		fmt.Printf(" \\%s", flag)
+		fmt.Printf(" %s", flag)
 	}
 	fmt.Printf("\n")
 

@@ -380,12 +380,7 @@ func (s *Stream) ReadIMAPFlagList() ([]string, error) {
 	flags := make([]string, len(parts))
 
 	for i, part := range parts {
-		if part[0] != '\\' {
-			return nil, fmt.Errorf("invalid mailbox flag %q",
-				string(part))
-		}
-
-		flags[i] = string(part[1:])
+		flags[i] = string(part)
 	}
 
 	return flags, nil
