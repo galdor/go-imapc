@@ -20,7 +20,7 @@ import (
 	"testing"
 )
 
-func TestQuoteString(t *testing.T) {
+func TestQuotedStringEncode(t *testing.T) {
 	tests := []struct {
 		str  string
 		qstr string
@@ -35,7 +35,7 @@ func TestQuoteString(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		qstr := QuoteString(test.str)
+		qstr := QuotedStringEncode(test.str)
 		if !bytes.Equal(qstr, []byte(test.qstr)) {
 			t.Errorf("%s was quoted as %s instead of %s",
 				test.str, qstr, test.qstr)

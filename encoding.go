@@ -23,8 +23,28 @@ type MailboxList struct {
 	Name               string
 }
 
-func MailboxNameEncode(s string) []byte {
-	return QuoteByteString(ModifiedUTF7Encode([]byte(s)))
+func QuotedStringEncode(str string) []byte {
+	return QuotedStringEncodeByteString([]byte(str))
+}
+
+func QuotedStringEncodeByteString(str []byte) []byte {
+	qstr := make([]byte, len(str)+2)
+
+	qstr[0] = '"'
+	i := 1
+	for _, b := range str {
+		if b == '"' || b == '\\' {
+			qstr = append(qstr, 0)
+			qstr[i] = '\\'
+			i++
+		}
+
+		qstr[i] = b
+		i++
+	}
+	qstr[i] = '"'
+
+	return qstr
 }
 
 func AStringEncode(s string) []byte {
@@ -35,8 +55,22 @@ func AStringEncodeByteString(bs []byte) []byte {
 	if ByteStringAll(bs, IsAtomChar) {
 		return bs
 	} else {
-		return QuoteByteString(bs)
+		return QuotedStringEncodeByteString(bs)
 	}
+}
+
+func MailboxNameEncode(s string) []byte {
+	return QuotedStringEncodeByteString(ModifiedUTF7Encode([]byte(s)))
+}
+
+func ByteStringAll(str []byte, fn func(byte) bool) bool {
+	for _, b := range str {
+		if !fn(b) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func IsAstringChar(b byte) bool {
