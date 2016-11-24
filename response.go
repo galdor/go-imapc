@@ -178,8 +178,14 @@ func ReadResponseData(s *Stream) (Response, error) {
 	}
 
 	// Read either the response tag or a number
-	data, err := s.ReadUntilByteAndSkip(' ')
+	data, err := s.ReadWhile(func(b byte) bool {
+		return (b >= 'A' && b <= 'Z') || IsDigitChar(b)
+	})
 	if err != nil {
+		return nil, err
+	}
+
+	if _, err := s.SkipByte(' '); err != nil {
 		return nil, err
 	}
 
