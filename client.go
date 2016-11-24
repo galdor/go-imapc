@@ -604,3 +604,18 @@ func (c *Client) SendCommandLogout() error {
 
 	return nil
 }
+
+func (c *Client) SendCommandSearch(charset string, key SearchKey) (*ResponseSetSearch, error) {
+	cmd := &CommandSearch{
+		Charset: charset,
+		Key:     key,
+	}
+
+	rs := &ResponseSetSearch{}
+
+	if err := c.SendCommandWithResponseSet(cmd, rs); err != nil {
+		return nil, err
+	}
+
+	return rs, nil
+}

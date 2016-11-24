@@ -292,3 +292,25 @@ func (c *CommandLogout) Args() []interface{} {
 func (c *CommandLogout) Continue(w *BufferedWriter, r *ResponseContinuation) error {
 	return nil
 }
+
+// ---------------------------------------------------------------------------
+//  Command: SEARCH
+// ---------------------------------------------------------------------------
+type CommandSearch struct {
+	Charset string
+	Key     SearchKey
+}
+
+func (c *CommandSearch) Args() []interface{} {
+	args := []interface{}{"SEARCH"}
+
+	if c.Charset != "" {
+		args = append(args, "CHARSET", AStringEncode(c.Charset))
+	}
+
+	return append(args, c.Key...)
+}
+
+func (c *CommandSearch) Continue(w *BufferedWriter, r *ResponseContinuation) error {
+	return nil
+}

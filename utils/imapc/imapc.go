@@ -40,6 +40,7 @@ func main() {
 	cmdline.AddCommand("subscribe", "subscribe to a mailbox")
 	cmdline.AddCommand("unsubscribe", "unsubscribe from a mailbox")
 	cmdline.AddCommand("examine", "examine a mailbox")
+	cmdline.AddCommand("search", "search for messages")
 
 	cmdline.Parse(os.Args)
 
@@ -72,6 +73,8 @@ func main() {
 		cmdFn = CmdUnsubscribe
 	case "examine":
 		cmdFn = CmdExamine
+	case "search":
+		cmdFn = CmdSearch
 	default:
 		Die("unknown command")
 	}
@@ -245,6 +248,29 @@ func CmdExamine(client *imapc.Client, args []string) {
 	fmt.Printf("Messages         %d\n", rs.Exists)
 	fmt.Printf("Unseen messages  %d\n", rs.Unseen)
 	fmt.Printf("Recent messages  %d\n", rs.Recent)
+}
+
+func CmdSearch(client *imapc.Client, args []string) {
+	cmdline := cmdline.New()
+	cmdline.AddOption("c", "charset", "charset", "the charset used")
+	cmdline.AddArgument("search", "the search string")
+	cmdline.Parse(args)
+
+	charset := cmdline.OptionValue("charset")
+	searchString := cmdline.ArgumentValue("search")
+
+	keys, err := imapc.ParseSearchString(searchString)
+	if err != nil {
+		Die("invalid search string: %v\n", err)
+	}
+
+	rs, err := client.SendCommandSearch(charset, keys)
+	if err != nil {
+		Die("%v", err)
+	}
+
+	// TODO
+	fmt.Printf("%#v\n", rs)
 }
 
 func Error(format string, args ...interface{}) {

@@ -15,6 +15,8 @@
 
 package imapc
 
+const IMAPDateFormat = "02-Jan-2006"
+
 type MailboxList struct {
 	Flags              []string
 	HierarchyDelimiter rune
@@ -23,6 +25,18 @@ type MailboxList struct {
 
 func QuotedStringEncode(s string) []byte {
 	return QuoteByteString(ModifiedUTF7Encode([]byte(s)))
+}
+
+func AStringEncode(s string) []byte {
+	return AStringEncodeByteString([]byte(s))
+}
+
+func AStringEncodeByteString(bs []byte) []byte {
+	if ByteStringAll(bs, IsAtomChar) {
+		return bs
+	} else {
+		return QuoteByteString(ModifiedUTF7Encode(bs))
+	}
 }
 
 func IsAstringChar(b byte) bool {

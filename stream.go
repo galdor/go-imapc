@@ -127,6 +127,11 @@ func (s *Stream) SkipByte(b byte) (bool, error) {
 	return s.SkipBytes([]byte{b})
 }
 
+func (s *Stream) SkipWhile(fn func(byte) bool) error {
+	_, err := s.ReadWhile(fn)
+	return err
+}
+
 func (s *Stream) Read(n int) ([]byte, error) {
 	data, err := s.Peek(n)
 	if err != nil {

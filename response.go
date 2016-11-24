@@ -230,6 +230,8 @@ func ReadResponseData(s *Stream) (Response, error) {
 			r = &ResponseLSub{}
 		case "FLAGS":
 			r = &ResponseFlags{}
+		case "SEARCH":
+			r = &ResponseSearch{}
 		default:
 			return nil, fmt.Errorf("unknown response %q", tag)
 		}
@@ -400,6 +402,46 @@ func (r *ResponseRecent) Read(s *Stream) error {
 		return err
 	} else if !ok {
 		return fmt.Errorf("invalid character after RECENT")
+	}
+
+	return nil
+}
+
+// SEARCH
+type ResponseSearch struct {
+	MessageSequenceNumbers []uint32
+}
+
+func (r *ResponseSearch) GoString() string {
+	buf := bytes.NewBuffer([]byte{})
+	for i, n := range r.MessageSequenceNumbers {
+		if i > 0 {
+			buf.WriteByte(' ')
+		}
+		fmt.Fprintf(buf, "%d", n)
+	}
+
+	return fmt.Sprintf("#<response-search %s>", buf.String())
+}
+
+func (r *ResponseSearch) Read(s *Stream) error {
+	data, err := s.ReadUntilAndSkip([]byte("\r\n"))
+	if err != nil {
+		return err
+	} else if len(data) == 0 {
+		return nil
+	}
+
+	parts := bytes.Split(data, []byte{' '})
+
+	r.MessageSequenceNumbers = make([]uint32, len(parts))
+	for i, part := range parts {
+		n, err := strconv.ParseUint(string(part), 10, 32)
+		if err != nil || n == 0 {
+			return fmt.Errorf("invalid message sequence number")
+		}
+
+		r.MessageSequenceNumbers[i] = uint32(n)
 	}
 
 	return nil
