@@ -32,20 +32,20 @@ func SearchKeyAnswered() SearchKey {
 	return SearchKey{"ANSWERED"}
 }
 
-func SearchKeyBCC(String string) SearchKey {
-	return SearchKey{"BCC", AStringEncode(String)}
+func SearchKeyBCC(str string) SearchKey {
+	return SearchKey{"BCC", AStringEncode(str)}
 }
 
-func SearchKeyBefore(Date time.Time) SearchKey {
-	return SearchKey{"BEFORE", Date.Format(IMAPDateFormat)}
+func SearchKeyBefore(date time.Time) SearchKey {
+	return SearchKey{"BEFORE", date.Format(IMAPDateFormat)}
 }
 
-func SearchKeyBody(String string) SearchKey {
-	return SearchKey{"BODY", AStringEncode(String)}
+func SearchKeyBody(str string) SearchKey {
+	return SearchKey{"BODY", AStringEncode(str)}
 }
 
-func SearchKeyCC(String string) SearchKey {
-	return SearchKey{"CC", AStringEncode(String)}
+func SearchKeyCC(str string) SearchKey {
+	return SearchKey{"CC", AStringEncode(str)}
 }
 
 func SearchKeyDeleted() SearchKey {
@@ -56,12 +56,12 @@ func SearchKeyFlagged() SearchKey {
 	return SearchKey{"FLAGGED"}
 }
 
-func SearchKeyFrom(String string) SearchKey {
-	return SearchKey{"FROM", AStringEncode(String)}
+func SearchKeyFrom(str string) SearchKey {
+	return SearchKey{"FROM", AStringEncode(str)}
 }
 
-func SearchKeyKeyword(Keyword string) SearchKey {
-	return SearchKey{"KEYWORD", AStringEncode(Keyword)}
+func SearchKeyKeyword(keyword string) SearchKey {
+	return SearchKey{"KEYWORD", AStringEncode(keyword)}
 }
 
 func SearchKeyNew() SearchKey {
@@ -72,8 +72,8 @@ func SearchKeyOld() SearchKey {
 	return SearchKey{"OLD"}
 }
 
-func SearchKeyOn(Date time.Time) SearchKey {
-	return SearchKey{"ON", Date.Format(IMAPDateFormat)}
+func SearchKeyOn(date time.Time) SearchKey {
+	return SearchKey{"ON", date.Format(IMAPDateFormat)}
 }
 
 func SearchKeyRecent() SearchKey {
@@ -84,20 +84,20 @@ func SearchKeySeen() SearchKey {
 	return SearchKey{"SEEN"}
 }
 
-func SearchKeySince(Date time.Time) SearchKey {
-	return SearchKey{"SINCE", Date.Format(IMAPDateFormat)}
+func SearchKeySince(date time.Time) SearchKey {
+	return SearchKey{"SINCE", date.Format(IMAPDateFormat)}
 }
 
-func SearchKeySubject(String string) SearchKey {
-	return SearchKey{"SUBJECT", AStringEncode(String)}
+func SearchKeySubject(str string) SearchKey {
+	return SearchKey{"SUBJECT", AStringEncode(str)}
 }
 
-func SearchKeyText(String string) SearchKey {
-	return SearchKey{"TEXT", AStringEncode(String)}
+func SearchKeyText(str string) SearchKey {
+	return SearchKey{"TEXT", AStringEncode(str)}
 }
 
-func SearchKeyTo(String string) SearchKey {
-	return SearchKey{"TO", AStringEncode(String)}
+func SearchKeyTo(str string) SearchKey {
+	return SearchKey{"TO", AStringEncode(str)}
 }
 
 func SearchKeyUnanswered() SearchKey {
@@ -112,8 +112,8 @@ func SearchKeyUnflagged() SearchKey {
 	return SearchKey{"UNFLAGGED"}
 }
 
-func SearchKeyUnkeyword(Keyword string) SearchKey {
-	return SearchKey{"UNKEYWORD", AStringEncode(Keyword)}
+func SearchKeyUnkeyword(keyword string) SearchKey {
+	return SearchKey{"UNKEYWORD", AStringEncode(keyword)}
 }
 
 func SearchKeyUnseen() SearchKey {
@@ -124,36 +124,36 @@ func SearchKeyDraft() SearchKey {
 	return SearchKey{"DRAFT"}
 }
 
-func SearchKeyHeader(Name, String string) SearchKey {
-	return SearchKey{"HEADER", AStringEncode(Name), AStringEncode(String)}
+func SearchKeyHeader(name, str string) SearchKey {
+	return SearchKey{"HEADER", AStringEncode(name), AStringEncode(str)}
 }
 
-func SearchKeyLarger(Size uint32) SearchKey {
-	return SearchKey{"LARGER", strconv.FormatInt(int64(Size), 10)}
+func SearchKeyLarger(size uint32) SearchKey {
+	return SearchKey{"LARGER", strconv.FormatInt(int64(size), 10)}
 }
 
-func SearchKeyNot(Key SearchKey) SearchKey {
-	return append(SearchKey{"NOT"}, Key...)
+func SearchKeyNot(key SearchKey) SearchKey {
+	return append(SearchKey{"NOT"}, key...)
 }
 
-func SearchKeyOr(Key1, Key2 SearchKey) SearchKey {
-	return append(append(append(SearchKey{}, "OR"), Key1...), Key2...)
+func SearchKeyOr(key1, key2 SearchKey) SearchKey {
+	return append(append(append(SearchKey{}, "OR"), key1...), key2...)
 }
 
-func SearchKeySentBefore(Date time.Time) SearchKey {
-	return SearchKey{"BEFORE", Date.Format(IMAPDateFormat)}
+func SearchKeySentBefore(date time.Time) SearchKey {
+	return SearchKey{"BEFORE", date.Format(IMAPDateFormat)}
 }
 
-func SearchKeySentOn(Date time.Time) SearchKey {
-	return SearchKey{"SENTON", Date.Format(IMAPDateFormat)}
+func SearchKeySentOn(date time.Time) SearchKey {
+	return SearchKey{"SENTON", date.Format(IMAPDateFormat)}
 }
 
-func SearchKeySentSince(Date time.Time) SearchKey {
-	return SearchKey{"SENTSINCE", Date.Format(IMAPDateFormat)}
+func SearchKeySentSince(date time.Time) SearchKey {
+	return SearchKey{"SENTSINCE", date.Format(IMAPDateFormat)}
 }
 
-func SearchKeySmaller(Size uint32) SearchKey {
-	return SearchKey{"SMALLER", strconv.FormatInt(int64(Size), 10)}
+func SearchKeySmaller(size uint32) SearchKey {
+	return SearchKey{"SMALLER", strconv.FormatInt(int64(size), 10)}
 }
 
 // TODO UID
