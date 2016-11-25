@@ -409,12 +409,12 @@ func (r *ResponseRecent) Read(s *Stream) error {
 
 // SEARCH
 type ResponseSearch struct {
-	MessageSequenceNumbers []uint32
+	MessageIds []uint32
 }
 
 func (r *ResponseSearch) GoString() string {
 	buf := bytes.NewBuffer([]byte{})
-	for i, n := range r.MessageSequenceNumbers {
+	for i, n := range r.MessageIds {
 		if i > 0 {
 			buf.WriteByte(' ')
 		}
@@ -434,14 +434,14 @@ func (r *ResponseSearch) Read(s *Stream) error {
 
 	parts := bytes.Split(data, []byte{' '})
 
-	r.MessageSequenceNumbers = make([]uint32, len(parts))
+	r.MessageIds = make([]uint32, len(parts))
 	for i, part := range parts {
 		n, err := strconv.ParseUint(string(part), 10, 32)
 		if err != nil || n == 0 {
 			return fmt.Errorf("invalid message sequence number")
 		}
 
-		r.MessageSequenceNumbers[i] = uint32(n)
+		r.MessageIds[i] = uint32(n)
 	}
 
 	return nil

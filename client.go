@@ -609,6 +609,7 @@ func (c *Client) SendCommandSearch(charset string, key SearchKey) (*ResponseSetS
 	cmd := &CommandSearch{
 		Charset: charset,
 		Key:     key,
+		UID:     true,
 	}
 
 	rs := &ResponseSetSearch{}

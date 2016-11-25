@@ -157,16 +157,15 @@ func (rs *ResponseSetSelect) Init(resps []Response, status *ResponseStatus) erro
 //  Response set: SEARCH
 // ---------------------------------------------------------------------------
 type ResponseSetSearch struct {
-	MessageSequenceNumbers []uint32
+	MessageIds []uint32
 }
 
 func (rs *ResponseSetSearch) Init(resps []Response, status *ResponseStatus) error {
 	for _, resp := range resps {
 		switch tresp := resp.(type) {
 		case *ResponseSearch:
-			seqNums := append(rs.MessageSequenceNumbers,
-				tresp.MessageSequenceNumbers...)
-			rs.MessageSequenceNumbers = seqNums
+			seqNums := append(rs.MessageIds, tresp.MessageIds...)
+			rs.MessageIds = seqNums
 		}
 	}
 

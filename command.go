@@ -299,10 +299,17 @@ func (c *CommandLogout) Continue(w *BufferedWriter, r *ResponseContinuation) err
 type CommandSearch struct {
 	Charset string
 	Key     SearchKey
+	UID     bool
 }
 
 func (c *CommandSearch) Args() []interface{} {
-	args := []interface{}{"SEARCH"}
+	args := []interface{}{}
+
+	if c.UID {
+		args = append(args, "UID")
+	}
+
+	args = append(args, "SEARCH")
 
 	if c.Charset != "" {
 		args = append(args, "CHARSET", AStringEncode(c.Charset))
