@@ -307,7 +307,7 @@ func parseSearchStringKey(data []byte) (SearchKey, []byte, error) {
 				"%s key", tag)
 		}
 
-		var fn func([]byte) ([]byte, []byte, error)
+		var fn func([]byte) (interface{}, []byte, error)
 
 		if spec == argKey {
 			key, rest, err := parseSearchStringKey(data)
@@ -347,7 +347,7 @@ func parseSearchStringKey(data []byte) (SearchKey, []byte, error) {
 	return key, data, nil
 }
 
-func parseSearchStringArgString(data []byte) ([]byte, []byte, error) {
+func parseSearchStringArgString(data []byte) (interface{}, []byte, error) {
 	var arg []byte
 
 	if data[0] == '"' {
@@ -389,10 +389,10 @@ func parseSearchStringArgString(data []byte) ([]byte, []byte, error) {
 		}
 	}
 
-	return AStringEncodeByteString(arg), data, nil
+	return Literal(arg), data, nil
 }
 
-func parseSearchStringArgDate(data []byte) ([]byte, []byte, error) {
+func parseSearchStringArgDate(data []byte) (interface{}, []byte, error) {
 	var arg []byte
 
 	idx := bytes.IndexAny(data, " \t")
@@ -412,7 +412,7 @@ func parseSearchStringArgDate(data []byte) ([]byte, []byte, error) {
 	return []byte(date.Format(IMAPDateFormat)), data, nil
 }
 
-func parseSearchStringArgSize(data []byte) ([]byte, []byte, error) {
+func parseSearchStringArgSize(data []byte) (interface{}, []byte, error) {
 	var arg []byte
 
 	idx := bytes.IndexAny(data, " \t")
