@@ -156,13 +156,19 @@ func SearchKeySmaller(size uint32) SearchKey {
 	return SearchKey{"SMALLER", strconv.FormatInt(int64(size), 10)}
 }
 
-// TODO UID
+func SearchKeyUID(set SequenceSet) SearchKey {
+	str, _ := set.MarshalText()
+	return SearchKey{"UID", str}
+}
 
 func SearchKeyUndraft() SearchKey {
 	return SearchKey{"UNDRAFT"}
 }
 
-// TODO sequence-set
+func SearchKeySequenceSet(set SequenceSet) SearchKey {
+	str, _ := set.MarshalText()
+	return SearchKey{str}
+}
 
 func SearchKeyList(list []SearchKey) SearchKey {
 	key := SearchKey{"("}
